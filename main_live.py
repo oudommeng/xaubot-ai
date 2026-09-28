@@ -167,7 +167,7 @@ class TradingBot:
         # Initialize Smart Risk Manager - ULTRA SAFE MODE
         self.smart_risk = create_smart_risk_manager(capital=self.config.capital)
 
-        # Initialize Dynamic Confidence - threshold berdasarkan kondisi market
+        # Initialize Dynamic Confidence - threshold based on market conditions
         self.dynamic_confidence = create_dynamic_confidence()
 
         # Initialize Telegram Notifier - smart notifications
@@ -846,8 +846,10 @@ class TradingBot:
             if not self.simulation:
                 return
 
-        # Register Telegram commands
+        # Register Telegram commands + "/" menu
         self._register_telegram_commands()
+        from src.telegram_commands import MENU_COMMANDS
+        await self.telegram.set_bot_commands(MENU_COMMANDS)
 
         # Sync position guards with MT5 (cleanup stale guards from previous restarts)
         self._sync_position_guards()
@@ -1281,20 +1283,20 @@ class TradingBot:
 
     async def _check_pyramid_opportunity(self, open_positions, current_price: float):
         """
-        Add to Winner (Pyramiding): Buka trade ke-2 saat trade pertama sudah profit.
+        Add to Winner (Pyramiding): open a 2nd trade when the first trade is already in profit.
 
         Rules:
-        1. Trade pertama harus profit >= $8 (ATR-scaled)
-        2. Ticket belum pernah trigger pyramid sebelumnya
-        3. SMC signal >= 75% sama arah
-        4. ML prediction setuju sama arah
-        5. Session harus London atau New York (high liquidity)
-        6. Max 2 posisi concurrent
-        7. Cooldown 30 detik antar pyramid
-        8. Lot size sama dengan trade pertama
+        1. First trade must be in profit >= $8 (ATR-scaled)
+        2. Ticket has not triggered a pyramid before
+        3. SMC signal >= 75% in the same direction
+        4. ML prediction agrees on the same direction
+        5. Session must be London or New York (high liquidity)
+        6. Max 2 concurrent positions
+        7. Cooldown 30 seconds between pyramids
+        8. Lot size same as the first trade
         """
         try:
-            # Cooldown check: minimal 30 detik antar pyramid
+            # Cooldown check: at least 30 seconds between pyramids
             if self._last_pyramid_time:
                 seconds_since = (datetime.now() - self._last_pyramid_time).total_seconds()
                 if seconds_since < 30:
@@ -1555,7 +1557,7 @@ class TradingBot:
         h1_bias = self._get_h1_bias()
 
         # 6.5 SMART POSITION MANAGEMENT - NO HARD STOP LOSS
-        # Hanya close jika: TP tercapai, ML reversal kuat, atau max loss
+        # Only close if: TP reached, strong ML reversal, or max loss
         if len(open_positions) > 0:
             if not self.simulation:
                 await self._smart_position_management(
@@ -1572,6 +1574,9 @@ class TradingBot:
                 for row in open_positions.iter_rows(named=True):
                     total_profit += row.get("profit", 0)
                 logger.info(f"Positions: {len(open_positions)} | Total P/L: ${total_profit:.2f}")
+
+        # Telegram alert when a news block starts / ends
+        await self.notifications.send_news_alert_if_changed()
 
         # Send hourly analysis report to Telegram (every 1 hour)
         # Placed here to ensure it's sent regardless of trading conditions
@@ -1680,8 +1685,8 @@ class TradingBot:
         if signal_blocked:
             return
 
-        # 10.1 H1 Bias — PENDUKUNG SAJA (v0.2.5d: tidak memblokir, hanya penalti confidence)
-        # SMC is MASTER. H1 aligned = boost 5%, H1 opposed = penalti 10%
+        # 10.1 H1 Bias — SUPPORT ONLY (v0.2.5d: does not block, only a confidence penalty)
+        # SMC is MASTER. H1 aligned = boost 5%, H1 opposed = 10% penalty
         h1_enabled = self._is_filter_enabled("h1_bias")
         h1_passed = True  # Always pass — never block
         h1_detail = f"H1={h1_bias}"
@@ -1906,15 +1911,15 @@ class TradingBot:
         current_hour = datetime.now(ZoneInfo("Asia/Jakarta")).hour
         is_golden_time = 19 <= current_hour <= 23  # Fixed detection
 
-        # 1. JANGAN trade jika market quality AVOID atau CRISIS
+        # 1. DO NOT trade if market quality is AVOID or CRISIS
         if market_analysis.quality.value == "avoid":
             if self._loop_count % 120 == 0:
-                logger.info(f"Skip: Market quality AVOID - tidak entry")
+                logger.info(f"Skip: Market quality AVOID - no entry")
             return None
 
         if regime_state and regime_state.regime == MarketRegime.CRISIS:
             if self._loop_count % 120 == 0:
-                logger.info(f"Skip: CRISIS regime - tidak entry")
+                logger.info(f"Skip: CRISIS regime - no entry")
             return None
 
         # ============================================================
@@ -1950,7 +1955,7 @@ class TradingBot:
         # ============================================================
         # SIGNAL LOGIC v6 - SMC-ONLY (TRUE SMC MASTER)
         # ============================================================
-        # Philosophy: SMC is MASTER, ML + H1 = PENDUKUNG only
+        # Philosophy: SMC is MASTER, ML + H1 = SUPPORT only
         # - SMC signal exists (>= 55% conf) -> EXECUTE
         # - ML agrees -> Boost confidence (average)
         # - ML disagrees -> Use SMC confidence (ML IGNORED)
@@ -1973,10 +1978,10 @@ class TradingBot:
             )
 
             # ============================================================
-            # SELL FILTER REMOVED (v0.2.5d: H1 = pendukung, bukan blocker)
+            # SELL FILTER REMOVED (v0.2.5d: H1 = support, not a blocker)
             # ============================================================
-            # SMC is MASTER — H1 bias hanya penalti confidence, TIDAK memblokir
-            # Penalti diterapkan di bawah bersama H1 bias filter
+            # SMC is MASTER — H1 bias is only a confidence penalty, it does NOT block
+            # Penalty is applied below together with the H1 bias filter
 
             # ============================================================
             # CALCULATE FINAL CONFIDENCE (SMC-ONLY MODE)
@@ -2211,13 +2216,13 @@ class TradingBot:
 
     async def _execute_trade_safe(self, signal: SMCSignal, position, regime_state):
         """
-        Execute trade dengan mode ULTRA SAFE v2.
+        Execute trade in ULTRA SAFE v2 mode.
 
-        PRINSIP:
-        1. Lot size SANGAT KECIL (0.01-0.03)
-        2. Emergency broker SL sebagai safety net (2% = ~$100)
-        3. Software S/L lebih ketat (1% = ~$50)
-        4. Smart management untuk exit (ML reversal detection)
+        PRINCIPLES:
+        1. VERY SMALL lot size (0.01-0.03)
+        2. Emergency broker SL as a safety net (2% = ~$100)
+        3. Tighter software S/L (1% = ~$50)
+        4. Smart management for exits (ML reversal detection)
         """
         # Calculate emergency broker SL (safety net)
         emergency_sl = self.smart_risk.calculate_emergency_sl(
@@ -2494,7 +2499,7 @@ class TradingBot:
             if not still_open:
                 continue
 
-            # AUTO-REGISTER posisi yang belum terdaftar (dari sebelum bot start)
+            # AUTO-REGISTER positions not yet registered (opened before the bot started)
             if not self.smart_risk.is_position_registered(ticket):
                 self.smart_risk.auto_register_existing_position(
                     ticket=ticket,

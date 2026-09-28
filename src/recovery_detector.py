@@ -1,6 +1,6 @@
 """
-Recovery Strength Detector - Deteksi kekuatan recovery dari loss
-Khusus untuk trade yang recovering dari drawdown
+Recovery Strength Detector - measures how strongly a trade recovers from a loss
+Specifically for trades recovering from drawdown
 """
 
 import numpy as np
@@ -10,10 +10,10 @@ from loguru import logger
 
 class RecoveryDetector:
     """
-    Analisis kekuatan recovery dari loss positions.
+    Analyzes recovery strength of losing positions.
 
     Scenario: Trade went to -$6.39, now at $0.05
-    Question: Apakah recovery akan continue ke profit besar, atau stop di sini?
+    Question: will the recovery continue into a big profit, or stop here?
 
     Strong recovery indicators:
     1. High recovery percentage (>80% from peak loss)
@@ -25,7 +25,7 @@ class RecoveryDetector:
     def __init__(self):
         self.strong_recovery_threshold = 0.8  # 80% recovery from loss
         self.fast_recovery_velocity = 0.05    # $/second
-        self.min_recovery_samples = 5         # Min data points untuk validate
+        self.min_recovery_samples = 5         # Min data points to validate
 
     def analyze_recovery_strength(
         self,
@@ -34,7 +34,7 @@ class RecoveryDetector:
         velocity_history: List[float] = None
     ) -> Tuple[bool, Dict[str, float]]:
         """
-        Analisis apakah recovery dari loss cukup kuat untuk continue.
+        Analyze whether the recovery from loss is strong enough to continue.
 
         Args:
             profit_history: Recent profit values
@@ -144,7 +144,7 @@ class RecoveryDetector:
         max_grace_seconds: int = 720  # 12 minutes
     ) -> Tuple[bool, int, str]:
         """
-        Tentukan apakah grace period harus diperpanjang untuk recovery.
+        Decide whether the grace period should be extended for the recovery.
 
         Args:
             profit_history: Recent profit values
@@ -187,7 +187,7 @@ class RecoveryDetector:
         velocity_history: List[float]
     ) -> Tuple[int, float]:
         """
-        Estimasi berapa lama lagi untuk mencapai breakeven.
+        Estimate how long until breakeven is reached.
 
         Args:
             profit_history: Recent profit values
@@ -230,7 +230,7 @@ class RecoveryDetector:
         current_exit_threshold: float = 0.85
     ) -> Tuple[str, float, str]:
         """
-        Rekomendasi lengkap untuk recovering position.
+        Full recommendation for a recovering position.
 
         Returns:
             (action, adjusted_threshold, reason)

@@ -120,9 +120,9 @@ class SessionFilter:
         # Danger zones (WIB)
         self.danger_zones = [
             # Rollover - spread extremely wide
-            {"name": "Rollover", "start": (4, 0), "end": (6, 0), "reason": "Spread melebar saat rollover"},
+            {"name": "Rollover", "start": (4, 0), "end": (6, 0), "reason": "Spread widens during rollover"},
             # Low liquidity
-            {"name": "Dead Zone", "start": (0, 0), "end": (4, 0), "reason": "Likuiditas rendah, spread tinggi"},
+            {"name": "Dead Zone", "start": (0, 0), "end": (4, 0), "reason": "Low liquidity, high spread"},
         ]
 
         # High impact news times to avoid (typical release times in WIB)
@@ -232,22 +232,22 @@ class SessionFilter:
 
         # Check weekend
         if self.is_weekend():
-            return False, "Market tutup (weekend)", 0.0
+            return False, "Market closed (weekend)", 0.0
 
         # Check Friday close
         if self.is_friday_close():
-            return False, "Mendekati penutupan Jumat - hindari gap weekend", 0.0
+            return False, "Near Friday close - avoiding weekend gap", 0.0
 
         # Check danger zones
         is_danger, danger_reason = self.is_danger_zone()
         if is_danger:
-            return False, f"Zona bahaya: {danger_reason}", 0.0
+            return False, f"Danger zone: {danger_reason}", 0.0
 
         # Get current session
         session, config = self.get_current_session()
 
         if not config.allow_trading:
-            return False, f"Trading tidak diizinkan saat {config.name}", 0.0
+            return False, f"Trading not allowed during {config.name}", 0.0
 
         # In aggressive mode, allow medium+ volatility + Sydney (proven profitable)
         if self.aggressive_mode:
@@ -256,7 +256,7 @@ class SessionFilter:
                 return True, f"Trading OK - {config.name} (SAFE MODE: 0.5x lot)", config.position_size_multiplier
             # Only block low volatility sessions
             if config.volatility not in ["medium", "high", "extreme"]:
-                return False, f"Mode agresif: tunggu sesi {config.name} (volatilitas {config.volatility})", config.position_size_multiplier
+                return False, f"Aggressive mode: waiting, {config.name} session (volatility {config.volatility})", config.position_size_multiplier
 
         return True, f"Trading OK - {config.name} ({config.volatility} volatility)", config.position_size_multiplier
 

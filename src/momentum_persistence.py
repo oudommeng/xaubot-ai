@@ -1,6 +1,6 @@
 """
-Momentum Persistence Detector - Deteksi apakah momentum akan continue atau reverse
-Menggunakan velocity/acceleration history untuk predict persistence
+Momentum Persistence Detector - detects whether momentum will continue or reverse
+Uses velocity/acceleration history to predict persistence
 """
 
 import numpy as np
@@ -10,10 +10,10 @@ from loguru import logger
 
 class MomentumPersistence:
     """
-    Analisis persistence (kekuatan berkelanjutan) dari momentum trading.
+    Analyzes the persistence (sustained strength) of trade momentum.
 
-    Skor tinggi (>0.7) = Momentum kuat, likely continue -> HOLD position
-    Skor rendah (<0.3) = Momentum lemah, likely reverse -> EXIT position
+    High score (>0.7) = strong momentum, likely continues -> HOLD position
+    Low score (<0.3) = weak momentum, likely reverses -> EXIT position
 
     Features analyzed:
     1. Velocity trend consistency (all positive/negative)
@@ -38,7 +38,7 @@ class MomentumPersistence:
         profit_history: List[float] = None
     ) -> float:
         """
-        Hitung momentum persistence score (0-1).
+        Calculate momentum persistence score (0-1).
 
         Args:
             velocity_history: Recent velocity values ($/second)
@@ -121,9 +121,9 @@ class MomentumPersistence:
         current_profit: float
     ) -> Dict[str, any]:
         """
-        Analisis komprehensif kualitas momentum.
+        Comprehensive momentum quality analysis.
 
-        Returns dict dengan:
+        Returns dict with:
         - persistence_score: Overall score (0-1)
         - trend: "strengthening", "weakening", "stable", "reversing"
         - recommendation: "HOLD", "CONSIDER_EXIT", "EXIT"
@@ -182,7 +182,7 @@ class MomentumPersistence:
         base_threshold: float = 0.85
     ) -> Tuple[bool, float, str]:
         """
-        Tentukan apakah exit threshold harus dinaikkan karena momentum kuat.
+        Decide whether the exit threshold should be raised because momentum is strong.
 
         Args:
             velocity_history: Recent velocity values
@@ -244,7 +244,7 @@ class MomentumPersistence:
         min_samples: int = 3
     ) -> Tuple[bool, str]:
         """
-        Deteksi reversal cepat dalam momentum (danger signal).
+        Detect a fast momentum reversal (danger signal).
 
         Returns:
             (is_reversing, reason)

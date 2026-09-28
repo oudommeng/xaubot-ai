@@ -1,14 +1,14 @@
 """
 Smart Risk Manager v2.0
 ========================
-Sistem risk management cerdas untuk mencegah kerugian besar.
+Smart risk management system to prevent large losses.
 
-FILOSOFI: "Slow but Steady - Mental Health First"
-- Lot size SANGAT KECIL (0.01-0.03)
-- TANPA hard stop loss (menggunakan soft management)
-- Hanya close jika trend BENAR-BENAR berbalik
-- Recovery mode setelah loss
-- Maximum loss per hari dibatasi ketat
+PHILOSOPHY: "Slow but Steady - Mental Health First"
+- VERY SMALL lot size (0.01-0.03)
+- NO hard stop loss (uses soft management)
+- Only close if the trend REALLY reverses
+- Recovery mode after a loss
+- Maximum loss per day strictly limited
 
 Author: AI Assistant
 """
@@ -32,20 +32,20 @@ _PREDICTIVE_ENABLED = os.environ.get("PREDICTIVE_ENABLED", "1") == "1"  # v6.3 P
 
 
 class TradingMode(Enum):
-    """Mode trading berdasarkan kondisi."""
-    NORMAL = "normal"           # Trading normal dengan lot kecil
-    RECOVERY = "recovery"       # Setelah loss, lot lebih kecil lagi
-    PROTECTED = "protected"     # Mendekati daily loss limit
-    STOPPED = "stopped"         # Stop trading hari ini
+    """Trading mode based on conditions."""
+    NORMAL = "normal"           # Normal trading with small lot
+    RECOVERY = "recovery"       # After a loss, even smaller lot
+    PROTECTED = "protected"     # Close to the daily loss limit
+    STOPPED = "stopped"         # Stop trading for today
 
 
 class ExitReason(Enum):
-    """Alasan untuk exit position."""
+    """Reason for exiting a position."""
     TAKE_PROFIT = "take_profit"
-    TREND_REVERSAL = "trend_reversal"      # ML signal berbalik KUAT
-    DAILY_LIMIT = "daily_limit"            # Mencapai daily loss limit
-    POSITION_LIMIT = "position_limit"      # Mencapai max loss per trade (S/L)
-    TOTAL_LIMIT = "total_limit"            # Mencapai total loss limit
+    TREND_REVERSAL = "trend_reversal"      # ML signal reversed STRONGLY
+    DAILY_LIMIT = "daily_limit"            # Reached daily loss limit
+    POSITION_LIMIT = "position_limit"      # Reached max loss per trade (S/L)
+    TOTAL_LIMIT = "total_limit"            # Reached total loss limit
     WEEKEND_CLOSE = "weekend_close"        # Menjelang weekend
     MANUAL = "manual"
 
@@ -67,18 +67,18 @@ class RiskState:
 
 @dataclass
 class PositionGuard:
-    """Guard untuk setiap position - menentukan kapan harus close."""
+    """Guard for each position - decides when to close."""
     ticket: int
     entry_price: float
     entry_time: datetime
     lot_size: float
     direction: str  # BUY or SELL
 
-    # Soft stops (hanya warning, tidak auto close)
+    # Soft stops (warning only, no auto close)
     soft_stop_price: float = 0
     soft_stop_triggered: bool = False
 
-    # Hard protection (hanya close jika ini tercapai)
+    # Hard protection (close only when this is reached)
     max_loss_usd: float = 50.0  # Maximum loss $50 per position
 
     # Profit tracking
@@ -94,15 +94,15 @@ class PositionGuard:
     target_tp_price: float = 0  # Original TP target
     target_tp_profit: float = 0  # Expected profit at TP
 
-    # Momentum tracking (untuk prediksi)
+    # Momentum tracking (for prediction)
     price_history: List[float] = field(default_factory=list)  # Last N prices
     profit_history: List[float] = field(default_factory=list)  # Last N profits
     ml_confidence_history: List[float] = field(default_factory=list)  # ML confidence trend
 
     # Smart analysis
     momentum_score: float = 0  # -100 to +100, positive = moving towards TP
-    stall_count: int = 0  # Berapa kali harga stall/sideways
-    reversal_warnings: int = 0  # Jumlah warning ML reversal
+    stall_count: int = 0  # How many times price stalled/went sideways
+    reversal_warnings: int = 0  # Number of ML reversal warnings
     profit_capture_count: int = 0  # Consecutive intervals with profit >= tp_min + velocity <= 0
 
     # === VELOCITY & ACCELERATION TRACKING ===
@@ -154,7 +154,7 @@ class PositionGuard:
     ever_profitable: bool = False          # True once trade has been profitable (profit > $0.50)
 
     def update_history(self, price: float, profit: float, ml_confidence: float, max_history: int = 20):
-        """Update price/profit history untuk analisis momentum."""
+        """Update price/profit history for momentum analysis."""
         now = time.time()
         self.price_history.append(price)
         self.profit_history.append(profit)
@@ -245,9 +245,9 @@ class PositionGuard:
 
     def calculate_momentum(self) -> float:
         """
-        Hitung momentum score -100 to +100.
-        Positive = bergerak ke arah TP (bagus)
-        Negative = bergerak menjauhi TP (bahaya)
+        Calculate momentum score -100 to +100.
+        Positive = moving toward TP (good)
+        Negative = moving away from TP (danger)
         """
         if len(self.profit_history) < 3:
             return 0
@@ -265,13 +265,13 @@ class PositionGuard:
 
     def get_tp_probability(self) -> float:
         """
-        Estimasi probabilitas mencapai TP (0-100%).
+        Estimate the probability of reaching TP (0-100%).
 
-        Faktor:
-        1. Jarak ke TP vs jarak sudah ditempuh
-        2. Momentum saat ini
+        Factors:
+        1. Distance to TP vs distance already covered
+        2. Current momentum
         3. ML confidence trend
-        4. Waktu sudah berjalan
+        4. Time elapsed
         """
         if self.target_tp_profit <= 0:
             return 50  # Unknown TP
@@ -357,16 +357,16 @@ class PositionGuard:
 
 class SmartRiskManager:
     """
-    Smart Risk Manager - Sistem manajemen risiko cerdas.
+    Smart Risk Manager - smart risk management system.
 
-    PRINSIP UTAMA:
-    1. Lot size SANGAT KECIL (0.01-0.03 max)
-    2. TIDAK menggunakan hard stop loss
-    3. Hanya close jika trend BENAR-BENAR berbalik (ML confidence tinggi)
-    4. Maximum loss per hari: 5% of capital
+    MAIN PRINCIPLES:
+    1. VERY SMALL lot size (0.01-0.03 max)
+    2. NO hard stop loss
+    3. Only close if the trend REALLY reverses (high ML confidence)
+    4. Maximum loss per day: 5% of capital
     5. Maximum total loss: 10% of capital (stop trading)
     6. S/L 1% per trade
-    7. Recovery mode setelah loss besar
+    7. Recovery mode after a big loss
     """
 
     def __init__(
@@ -376,11 +376,11 @@ class SmartRiskManager:
         max_total_loss_percent: float = 10.0,     # Max 10% total loss (stop trading)
         max_loss_per_trade_percent: float = 0.5,  # Max 0.5% per trade (FIX 5: was 1.0%, ~$25 for $5k capital)
         emergency_sl_percent: float = 2.0,        # Emergency broker S/L 2% per trade
-        base_lot_size: float = 0.01,              # Lot dasar sangat kecil
+        base_lot_size: float = 0.01,              # Very small base lot
         max_lot_size: float = 0.03,               # Maximum lot
-        recovery_lot_size: float = 0.01,          # Lot saat recovery
-        trend_reversal_threshold: float = 0.75,   # ML confidence untuk close
-        max_concurrent_positions: int = 2,        # Max posisi bersamaan
+        recovery_lot_size: float = 0.01,          # Lot during recovery
+        trend_reversal_threshold: float = 0.75,   # ML confidence to close
+        max_concurrent_positions: int = 2,        # Max concurrent positions
     ):
         self.capital = capital
         self.max_daily_loss_percent = max_daily_loss_percent
@@ -754,7 +754,7 @@ class SmartRiskManager:
         """
         Calculate safe lot size with ML confidence adjustment.
 
-        PRINSIP: Lot size SANGAT KECIL
+        PRINCIPLE: VERY SMALL lot size
         - Base: 0.01
         - Max: 0.02 (reduced from 0.03)
 
@@ -819,10 +819,10 @@ class SmartRiskManager:
         """
         Register a new position for monitoring.
 
-        TIDAK menggunakan hard stop loss.
-        Menggunakan soft management berdasarkan:
+        Does NOT use a hard stop loss.
+        Uses soft management based on:
         - Maximum loss per position ($30-50)
-        - Trend reversal (ML confidence tinggi berlawanan)
+        - Trend reversal (high ML confidence in the opposite direction)
         """
         guard = PositionGuard(
             ticket=ticket,
@@ -847,26 +847,26 @@ class SmartRiskManager:
         current_profit: float = 0,
     ) -> PositionGuard:
         """
-        Auto-register posisi yang sudah ada (dari sebelum bot start).
+        Auto-register existing positions (opened before the bot started).
 
-        Penting untuk memastikan SEMUA posisi terlindungi oleh:
+        Important to make sure ALL positions are protected by:
         - Max loss $50 per trade
         - ML reversal detection
         - Daily loss tracking
         """
-        # Skip jika sudah registered
+        # Skip if already registered
         if ticket in self._position_guards:
             return self._position_guards[ticket]
 
         guard = PositionGuard(
             ticket=ticket,
             entry_price=entry_price,
-            entry_time=datetime.now(WIB),  # Approximate, tidak tahu exact time
+            entry_time=datetime.now(WIB),  # Approximate, exact time unknown
             lot_size=lot_size,
             direction=direction,
             max_loss_usd=self.max_loss_per_trade,
             current_profit=current_profit,
-            peak_profit=max(0, current_profit),  # Track peak dari sekarang
+            peak_profit=max(0, current_profit),  # Track peak from now
         )
 
         self._position_guards[ticket] = guard
@@ -1244,10 +1244,10 @@ class SmartRiskManager:
         if current_profit > guard.peak_profit:
             guard.peak_profit = current_profit
 
-        # Update history untuk analisis momentum
+        # Update history for momentum analysis
         guard.update_history(current_price, current_profit, ml_confidence)
 
-        # Calculate momentum dan TP probability
+        # Calculate momentum and TP probability
         momentum = guard.calculate_momentum()
         tp_probability = guard.get_tp_probability()
 
@@ -1262,7 +1262,7 @@ class SmartRiskManager:
             # === FUZZY LOGIC EXIT CONFIDENCE ===
             if self.fuzzy_controller is not None:
                 # Calculate profit retention
-                # FIX v0.1.2: Small loss after small profit = micro swing, bukan collapse
+                # FIX v0.1.2: Small loss after small profit = micro swing, not a collapse
                 if current_profit < 0 and 0 < guard.peak_profit < 300:  # Peak <$3
                     # Small loss after small profit: treat as medium retention (0.5)
                     # Prevents false "collapsed" trigger (retention < 0.3 -> 95% exit)
@@ -1850,21 +1850,21 @@ class SmartRiskManager:
 
         # === CHECK 1: SMART TAKE PROFIT ===
         if current_profit >= tp_min:  # Profit >= scaled threshold
-            # A. Hard TP - profit sangat bagus
+            # A. Hard TP - very good profit
             if current_profit >= tp_hard:
                 return True, ExitReason.TAKE_PROFIT, f"[TP] Target profit reached: ${current_profit:.2f}"
 
-            # B. Momentum-based TP - profit bagus tapi momentum turun
+            # B. Momentum-based TP - good profit but momentum dropping
             if current_profit >= tp_secure and momentum < -30:
                 return True, ExitReason.TAKE_PROFIT, f"[SECURE] Securing ${current_profit:.2f} (momentum dropping: {momentum:.0f})"
 
-            # C. Peak protection - profit turun dari peak
+            # C. Peak protection - profit dropped from peak
             # v5d: only LOCK at substantial peaks (tp_secure, ~$6+) not small ones (~$4)
             # Small peaks ($3-5) are noise — let trade develop to full potential
             if guard.peak_profit > tp_secure and current_profit < guard.peak_profit * 0.6:
                 return True, ExitReason.TAKE_PROFIT, f"[LOCK] Securing ${current_profit:.2f} (was ${guard.peak_profit:.2f} peak)"
 
-            # D. Low TP probability - kemungkinan TP rendah
+            # D. Low TP probability - TP unlikely
             if tp_probability < 25 and current_profit >= tp_prob:
                 return True, ExitReason.TAKE_PROFIT, f"[PROB] Taking profit ${current_profit:.2f} (TP prob: {tp_probability:.0f}%)"
 
@@ -1902,7 +1902,7 @@ class SmartRiskManager:
             else:
                 guard.profit_capture_count = 0  # Reset: velocity positive, profit growing
 
-            # E. Masih bagus, let it run
+            # E. Still good, let it run
             if momentum >= 0:
                 return False, None, f"Profit ${current_profit:.2f} [GOOD] (momentum: {momentum:+.0f}, TP prob: {tp_probability:.0f}%)"
 
@@ -1986,7 +1986,7 @@ class SmartRiskManager:
                 return True, ExitReason.TREND_REVERSAL, f"[STAGNANT] Loss ${abs(current_profit):.2f} stagnant {guard.stagnation_seconds:.0f}s — cutting"
 
         # === CHECK 4: TREND REVERSAL (ATR-based) ===
-        # Close lebih cepat jika ML reversal + loss > 0.2 ATR
+        # Close faster if ML reversal + loss > 0.2 ATR
         is_reversal = False
         if guard.direction == "BUY" and ml_signal == "SELL" and ml_confidence >= self.trend_reversal_threshold:
             is_reversal = True
@@ -2170,13 +2170,13 @@ class SmartRiskManager:
         """
         Determine if we should use stop loss.
 
-        REKOMENDASI: TIDAK menggunakan hard stop loss.
-        Alasan:
-        1. Market sering "sweep" stop loss sebelum reversal
-        2. Dengan lot kecil, bisa hold lebih lama
-        3. ML akan mendeteksi trend reversal yang sebenarnya
+        RECOMMENDATION: do NOT use a hard stop loss.
+        Reasons:
+        1. The market often "sweeps" stop losses before reversing
+        2. With a small lot, positions can be held longer
+        3. ML will detect the real trend reversal
         """
-        return False, "Smart management tanpa hard SL - lot kecil, hold through volatility"
+        return False, "Smart management without hard SL - small lot, hold through volatility"
 
     def reset_total_loss(self):
         """Reset total loss counter (admin function - use with caution)."""
@@ -2207,26 +2207,39 @@ class SmartRiskManager:
         return "\n".join(lines)
 
 
+def _lot_sizes_from_env() -> Tuple[float, float, float]:
+    """(base, max, recovery) lot from .env BASE_LOT / MAX_LOT / RECOVERY_LOT (defaults 0.01 / 0.02 / 0.01)."""
+    base = float(os.getenv("BASE_LOT") or 0.01)
+    max_lot = float(os.getenv("MAX_LOT") or 0.02)
+    recovery = float(os.getenv("RECOVERY_LOT") or base)
+    if min(base, max_lot, recovery) < 0.01:
+        raise ValueError(f"Lot sizes must be >= 0.01 (BASE_LOT={base}, MAX_LOT={max_lot}, RECOVERY_LOT={recovery})")
+    if not recovery <= base <= max_lot:
+        raise ValueError(f"Need RECOVERY_LOT <= BASE_LOT <= MAX_LOT (got {recovery} / {base} / {max_lot})")
+    return round(base, 2), round(max_lot, 2), round(recovery, 2)
+
+
 def create_smart_risk_manager(capital: float = 5000.0) -> SmartRiskManager:
     """Create smart risk manager instance with NEW settings."""
+    base_lot, max_lot, recovery_lot = _lot_sizes_from_env()
     return SmartRiskManager(
         capital=capital,
         max_daily_loss_percent=5.0,         # Max 5% daily loss
         max_total_loss_percent=10.0,        # Max 10% total loss (stop trading)
         max_loss_per_trade_percent=0.5,     # FIX 5 v0.1.1: S/L 0.5% per trade (~$25 for $5k)
         emergency_sl_percent=2.0,           # Emergency broker SL 2% per trade
-        base_lot_size=0.01,                 # Base lot 0.01 (minimum)
-        max_lot_size=0.02,                  # Maximum 0.02 (sangat kecil)
-        recovery_lot_size=0.01,             # Saat recovery tetap 0.01
-        trend_reversal_threshold=0.65,      # Close jika ML 65%+ yakin (lebih sensitif)
-        max_concurrent_positions=2,         # Max 2 posisi bersamaan
+        base_lot_size=base_lot,             # .env BASE_LOT (default 0.01): ML 55-65%
+        max_lot_size=max_lot,               # .env MAX_LOT (default 0.02): ML >= 65%
+        recovery_lot_size=recovery_lot,     # .env RECOVERY_LOT (default = BASE_LOT): low conf / recovery / volatile
+        trend_reversal_threshold=0.65,      # Close if ML is 65%+ confident (more sensitive)
+        max_concurrent_positions=2,         # Max 2 concurrent positions
     )
 
 
 if __name__ == "__main__":
-    # Test dengan modal $50
+    # Test with $50 capital
     print("=" * 50)
-    print("TESTING DENGAN MODAL $50")
+    print("TESTING WITH $50 CAPITAL")
     print("=" * 50)
     manager = create_smart_risk_manager(50)
 

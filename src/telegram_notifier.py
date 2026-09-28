@@ -16,7 +16,7 @@ Features:
 import asyncio
 import os
 from datetime import datetime, timedelta
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -168,8 +168,25 @@ class TelegramNotifier:
     # ========== COMMAND SYSTEM ==========
 
     def register_command(self, command: str, handler):
-        """Register a command handler. Handler is an async callable returning str."""
+        """Register a command handler. Handler is an async callable returning str.
+        Set handler._takes_args = True to receive the words after the command."""
         self._command_handlers[command.lstrip("/")] = handler
+
+    async def set_bot_commands(self, commands: List[Tuple[str, str]]) -> bool:
+        """Publish the command menu Telegram shows when typing "/" (setMyCommands)."""
+        if not self.enabled:
+            return False
+        try:
+            session = await self._get_session()
+            payload = {"commands": [{"command": c, "description": d[:256]} for c, d in commands]}
+            async with session.post(f"{self._api_url}/setMyCommands", json=payload, timeout=10) as resp:
+                if resp.status == 200:
+                    logger.info(f"Telegram: '/' menu set ({len(commands)} commands)")
+                    return True
+                logger.warning(f"Telegram setMyCommands failed: {await resp.text()}")
+        except Exception as e:
+            logger.warning(f"Telegram setMyCommands error: {e}")
+        return False
 
     async def poll_commands(self) -> int:
         """
@@ -207,12 +224,15 @@ class TelegramNotifier:
                 if not text.startswith("/"):
                     continue
 
-                # Parse command (e.g., "/status" or "/status@botname")
-                cmd = text.split()[0].split("@")[0].lstrip("/").lower()
+                # Parse command (e.g., "/status", "/status@botname", "/news off")
+                parts = text.split()
+                cmd = parts[0].split("@")[0].lstrip("/").lower()
+                args = [a.lower() for a in parts[1:]]
 
                 if cmd in self._command_handlers:
                     try:
-                        response = await self._command_handlers[cmd]()
+                        handler = self._command_handlers[cmd]
+                        response = await (handler(args) if getattr(handler, "_takes_args", False) else handler())
                         if response:
                             await self.send_message(response)
                         processed += 1
@@ -223,7 +243,7 @@ class TelegramNotifier:
                     await self._send_help()
                     processed += 1
                 else:
-                    await self.send_message(f"❓ Unknown: <code>/{cmd}</code>\nKetik /help untuk daftar command.")
+                    await self.send_message(f"❓ Unknown: <code>/{cmd}</code>\nType /help for the command list.")
                     processed += 1
 
             return processed

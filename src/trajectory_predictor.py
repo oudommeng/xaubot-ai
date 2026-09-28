@@ -1,6 +1,6 @@
 """
-Trajectory Predictor - Prediksi pergerakan profit masa depan
-Menggunakan parabolic motion model untuk forecast profit 1-5 menit ke depan
+Trajectory Predictor - predicts future profit movement
+Uses a parabolic motion model to forecast profit 1-5 minutes ahead
 """
 
 import numpy as np
@@ -10,19 +10,19 @@ from loguru import logger
 
 class TrajectoryPredictor:
     """
-    Prediksi trajectory profit menggunakan kinematic equations.
+    Predicts the profit trajectory using kinematic equations.
 
     Model: profit(t) = profit₀ + velocity*t + 0.5*acceleration*t²
 
-    Cocok untuk:
-    - Deteksi early exit (jangan close jika prediksi profit tinggi)
-    - Validasi exit timing (exit jika prediksi profit turun)
-    - Recovery continuation (prediksi apakah recovery akan lanjut)
+    Useful for:
+    - Early exit detection (don't close if predicted profit is high)
+    - Exit timing validation (exit if predicted profit falls)
+    - Recovery continuation (predict whether a recovery will continue)
     """
 
     def __init__(self):
         self.default_horizons = [60, 180, 300]  # 1m, 3m, 5m (seconds)
-        self.confidence_threshold = 0.7  # Minimum confidence untuk pakai prediksi
+        self.confidence_threshold = 0.7  # Minimum confidence to use the prediction
 
         # v0.2.0: Regime-based dampening factors (validated from live trades)
         # Trade #161778984: avg over-prediction 7.5x -> need 85% reduction
@@ -44,17 +44,17 @@ class TrajectoryPredictor:
         regime: str = "normal"
     ) -> List[float]:
         """
-        Prediksi profit di masa depan menggunakan parabolic motion dengan regime dampening.
+        Predict future profit using parabolic motion with regime dampening.
 
         Args:
-            current_profit: Profit saat ini ($)
+            current_profit: Current profit ($)
             velocity: Profit velocity ($/second)
             acceleration: Profit acceleration ($/second²)
             horizons: List of time horizons dalam seconds (default: [60, 180, 300])
             regime: Market regime for dampening ("ranging"/"volatile"/"trending")
 
         Returns:
-            List of predicted profits untuk setiap horizon (damped)
+            List of predicted profits for each horizon (damped)
 
         Example:
             >>> predictor = TrajectoryPredictor()
@@ -113,9 +113,9 @@ class TrajectoryPredictor:
         acceleration_history: List[float]
     ) -> float:
         """
-        Hitung confidence level prediksi (0-1).
+        Calculate prediction confidence level (0-1).
 
-        High confidence jika:
+        High confidence if:
         - Velocity stable (low variance)
         - Acceleration consistent
         - Sufficient data points
@@ -156,7 +156,7 @@ class TrajectoryPredictor:
         regime: str = "normal"
     ) -> Tuple[bool, str, Dict[str, float]]:
         """
-        Rekomendasi apakah HOLD position berdasarkan prediksi (dengan regime dampening).
+        Recommend whether to HOLD the position based on the prediction (with regime dampening).
 
         Args:
             current_profit: Current profit ($)
@@ -242,7 +242,7 @@ class TrajectoryPredictor:
         tp_target: float
     ) -> Tuple[float, int]:
         """
-        Estimasi waktu optimal untuk exit berdasarkan trajectory.
+        Estimate the optimal exit time based on the trajectory.
 
         Args:
             current_profit: Current profit

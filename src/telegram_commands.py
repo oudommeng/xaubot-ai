@@ -11,6 +11,8 @@ Commands:
   /pos        — Alias for /positions
   /daily      — Daily trading summary
   /filters    — Entry filter status
+  /news       — News filter status & upcoming NFP/FOMC/CPI blocks
+  /news on|off — Enable / disable the news filter (saved to data/filter_config.json)
   /help       — List all available commands
 
 Integration:
@@ -299,6 +301,55 @@ def register_commands(bot):
     cmd_filters._cmd_desc = "Entry filter status"
 
     # ------------------------------------------------------------------
+    # /news [on|off] — News filter status, upcoming blocks, toggle
+    # ------------------------------------------------------------------
+    async def cmd_news(args):
+        fc = bot.filter_config
+        if args and args[0] in ("on", "off"):
+            fc.set_enabled("news_filter", args[0] == "on")
+            fc.save()
+        elif args:
+            return "❓ Usage: <code>/news</code>, <code>/news on</code> or <code>/news off</code>"
+
+        enabled = fc.is_enabled("news_filter")
+        can_trade, reason, _ = bot.news_agent.should_trade()
+        if not enabled:
+            status = "⏸ OFF (entries not blocked)"
+        elif can_trade:
+            status = "✅ SAFE (entries allowed)"
+        else:
+            status = "🚨 BLOCKED (no new entries)"
+
+        state_items = [
+            f"Filter: <code>{status}</code>",
+            f"Reason: <code>{reason}</code>",
+            "Window: <code>±1h around NFP / FOMC / CPI</code>",
+        ]
+
+        now = datetime.now(WIB)
+        block_items = []
+        for start, end, event in bot.news_agent.upcoming_blocks(days=35, now=now)[:6]:
+            when = "NOW" if start <= now else start.strftime("%a %d %b")
+            block_items.append(
+                f"{when} {start.strftime('%H:%M')}-{end.strftime('%H:%M')}: <code>{event.split(' - ')[0]}</code>"
+            )
+        if not block_items:
+            block_items = ["None in the next 35 days"]
+
+        toggle = "/news off to allow entries during news" if enabled else "/news on to block entries during news"
+        return f"""📰 <b>NEWS FILTER</b>
+
+{build("Status", state_items)}
+
+{build("Upcoming Blocks (WIB)", block_items)}
+
+💡 {toggle}
+⏰ {_timestamp()} WIB""".strip()
+
+    cmd_news._cmd_desc = "News filter status & upcoming NFP/FOMC/CPI (on|off)"
+    cmd_news._takes_args = True
+
+    # ------------------------------------------------------------------
     # Register all commands
     # ------------------------------------------------------------------
     tg.register_command("status", cmd_status)
@@ -313,5 +364,20 @@ def register_commands(bot):
     tg.register_command("d", cmd_daily)            # alias
     tg.register_command("filters", cmd_filters)
     tg.register_command("f", cmd_filters)          # alias
+    tg.register_command("news", cmd_news)
+    tg.register_command("n", cmd_news)             # alias
 
-    logger.info("Telegram commands registered: /status /market /risk /positions /daily /filters /help")
+    logger.info("Telegram commands registered: /status /market /risk /positions /daily /filters /news /help")
+
+
+# Shown in Telegram's "/" menu (aliases left out to keep it short)
+MENU_COMMANDS = [
+    ("status", "Bot status & account overview"),
+    ("market", "Market analysis & signals"),
+    ("positions", "Open positions"),
+    ("daily", "Today's trading summary"),
+    ("risk", "Risk state & settings"),
+    ("filters", "Entry filter status"),
+    ("news", "News filter & upcoming NFP/FOMC/CPI"),
+    ("help", "All commands"),
+]

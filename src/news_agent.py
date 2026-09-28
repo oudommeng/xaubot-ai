@@ -1,17 +1,17 @@
 """
 News Agent - Market Sentiment & Economic Calendar Analysis
 ==========================================================
-Mengintegrasikan analisis berita untuk keputusan trading yang lebih cerdas.
+Integrates news analysis for smarter trading decisions.
 
-Fitur:
-1. MT5 Economic Calendar - Deteksi news high-impact (NFP, FOMC, CPI)
-2. Keyword Sentiment Analysis - Analisis headline berita
-3. News Filter Gatekeeper - Blokir trading saat kondisi berbahaya
+Features:
+1. Economic calendar - detect high-impact news (NFP, FOMC, CPI)
+2. Keyword Sentiment Analysis - analyze news headlines
+3. News Filter Gatekeeper - block trading in dangerous conditions
 
-Prinsip: "Sentimen-First, Technical-Second"
-- Jika ada news high-impact -> STOP trading
-- Jika sentimen sangat negatif -> Reduce position size
-- Jika aman -> Proceed dengan analisis teknikal
+Principle: "Sentiment-First, Technical-Second"
+- If high-impact news -> STOP trading
+- If sentiment very negative -> reduce position size
+- If safe -> proceed with technical analysis
 """
 
 import os
@@ -33,17 +33,17 @@ FOMC_DECISION_DATES = {
 
 
 class MarketCondition(Enum):
-    """Kondisi market berdasarkan news analysis."""
-    SAFE = "safe"                    # Aman untuk trading
-    CAUTION = "caution"              # Hati-hati, reduce size
-    DANGER_NEWS = "danger_news"      # Ada news high-impact, jangan trade
-    DANGER_SENTIMENT = "danger_sentiment"  # Sentimen sangat negatif
-    UNKNOWN = "unknown"              # Tidak bisa menentukan
+    """Market condition based on news analysis."""
+    SAFE = "safe"                    # Safe to trade
+    CAUTION = "caution"              # Careful, reduce size
+    DANGER_NEWS = "danger_news"      # High-impact news, do not trade
+    DANGER_SENTIMENT = "danger_sentiment"  # Very negative sentiment
+    UNKNOWN = "unknown"              # Cannot determine
 
 
 @dataclass
 class NewsEvent:
-    """Representasi event dari economic calendar."""
+    """An event from the economic calendar."""
     name: str
     currency: str
     importance: int  # 1=Low, 2=Medium, 3=High
@@ -55,7 +55,7 @@ class NewsEvent:
 
 @dataclass
 class SentimentResult:
-    """Hasil analisis sentimen."""
+    """Sentiment analysis result."""
     score: float  # -1.0 (bearish) to +1.0 (bullish)
     label: str    # BEARISH, NEUTRAL, BULLISH
     confidence: float
@@ -64,7 +64,7 @@ class SentimentResult:
 
 @dataclass
 class NewsAnalysis:
-    """Hasil lengkap analisis news."""
+    """Full news analysis result."""
     condition: MarketCondition
     upcoming_events: List[NewsEvent]
     sentiment: Optional[SentimentResult]
@@ -75,12 +75,12 @@ class NewsAnalysis:
 
 class NewsAgent:
     """
-    Agent untuk analisis berita dan economic calendar.
+    Agent for news and economic calendar analysis.
 
-    Berfungsi sebagai "Gatekeeper" sebelum trading:
-    1. Cek economic calendar MT5
-    2. Analisis sentimen dari headline
-    3. Tentukan apakah aman untuk trading
+    Acts as a "Gatekeeper" before trading:
+    1. Check the economic calendar
+    2. Analyze headline sentiment
+    3. Decide whether it is safe to trade
     """
 
     # High-impact news keywords (USD-related for XAUUSD)
@@ -91,7 +91,7 @@ class NewsAgent:
         "ISM Manufacturing", "ISM Services", "PPI", "Trade Balance",
     ]
 
-    # Bearish keywords untuk gold
+    # Bearish keywords for gold
     BEARISH_KEYWORDS = [
         # Geopolitical - usually bullish for gold, but sudden de-escalation is bearish
         "peace deal", "ceasefire", "de-escalation", "talks succeed",
@@ -104,7 +104,7 @@ class NewsAgent:
         "gold plunge", "gold drops", "gold falls", "bearish gold",
     ]
 
-    # Bullish keywords untuk gold
+    # Bullish keywords for gold
     BULLISH_KEYWORDS = [
         # Geopolitical - uncertainty is bullish for gold
         "war", "conflict", "invasion", "attack", "missile", "escalation",
@@ -135,17 +135,17 @@ class NewsAgent:
         Initialize News Agent.
 
         Args:
-            news_buffer_minutes: Jangan trade X menit sebelum/sesudah news biasa
-            high_impact_buffer_minutes: Jangan trade X menit sebelum/sesudah news high-impact
-            enable_mt5_calendar: Aktifkan pengecekan MT5 calendar
-            enable_sentiment: Aktifkan analisis sentimen
+            news_buffer_minutes: Don't trade X minutes before/after normal news
+            high_impact_buffer_minutes: Don't trade X minutes before/after high-impact news
+            enable_mt5_calendar: Enable the calendar check
+            enable_sentiment: Enable sentiment analysis
         """
         self.news_buffer_minutes = news_buffer_minutes
         self.high_impact_buffer_minutes = high_impact_buffer_minutes
         self.enable_mt5_calendar = enable_mt5_calendar
         self.enable_sentiment = enable_sentiment
 
-        # Cache untuk mengurangi API calls
+        # Cache to reduce API calls
         self._calendar_cache: List[NewsEvent] = []
         self._cache_time: Optional[datetime] = None
         self._cache_duration = timedelta(minutes=15)
@@ -157,7 +157,7 @@ class NewsAgent:
 
     def check_economic_calendar(self) -> Tuple[MarketCondition, List[NewsEvent], str]:
         """
-        Cek MT5 Economic Calendar untuk news high-impact.
+        Check the economic calendar for high-impact news.
 
         Returns:
             (condition, events, reason)
@@ -236,13 +236,13 @@ class NewsAgent:
 
     def analyze_sentiment(self, headlines: List[str]) -> SentimentResult:
         """
-        Analisis sentimen dari headline berita.
+        Analyze sentiment of news headlines.
 
         Args:
             headlines: List of news headlines
 
         Returns:
-            SentimentResult dengan score dan label
+            SentimentResult with score and label
         """
         if not headlines:
             return SentimentResult(
@@ -308,20 +308,41 @@ class NewsAgent:
             keywords_found=all_keywords,
         )
 
+    def upcoming_blocks(
+        self, days: int = 35, now: Optional[datetime] = None
+    ) -> List[Tuple[datetime, datetime, str]]:
+        """
+        High-impact block windows (start, end, event) in WIB from now, including a
+        window already in progress. Scans hourly with the same rules that block trading.
+        """
+        now = now or datetime.now(WIB)
+        hour = now.replace(minute=0, second=0, microsecond=0)
+        blocks: List[Tuple[datetime, datetime, str]] = []
+        for i in range(days * 24):
+            t = hour + timedelta(hours=i)
+            event = self._check_known_events(t)
+            if not event:
+                continue
+            if blocks and blocks[-1][2] == event and blocks[-1][1] == t:
+                blocks[-1] = (blocks[-1][0], t + timedelta(hours=1), event)
+            else:
+                blocks.append((t, t + timedelta(hours=1), event))
+        return blocks
+
     def analyze(
         self,
         headlines: Optional[List[str]] = None,
         check_calendar: bool = True,
     ) -> NewsAnalysis:
         """
-        Analisis lengkap news untuk keputusan trading.
+        Full news analysis for trading decisions.
 
         Args:
             headlines: Optional list of news headlines
             check_calendar: Whether to check economic calendar
 
         Returns:
-            NewsAnalysis dengan rekomendasi trading
+            NewsAnalysis with trading recommendation
         """
         condition = MarketCondition.SAFE
         events: List[NewsEvent] = []
@@ -374,7 +395,7 @@ class NewsAgent:
 
     def should_trade(self, headlines: Optional[List[str]] = None) -> Tuple[bool, str, float]:
         """
-        Quick check: Apakah aman untuk trading?
+        Quick check: is it safe to trade?
 
         Returns:
             (can_trade, reason, lot_multiplier)
@@ -398,7 +419,7 @@ def create_news_agent(
     news_buffer_minutes: int = 30,
     high_impact_buffer_minutes: int = 60,
 ) -> NewsAgent:
-    """Factory function untuk membuat NewsAgent."""
+    """Factory function to create a NewsAgent."""
     return NewsAgent(
         news_buffer_minutes=news_buffer_minutes,
         high_impact_buffer_minutes=high_impact_buffer_minutes,
@@ -411,8 +432,8 @@ def create_news_agent(
 
 class ExternalNewsProvider:
     """
-    Base class untuk external news providers.
-    Implement untuk NewsAPI, ForexFactory, Bloomberg, dll.
+    Base class for external news providers.
+    Implement for NewsAPI, ForexFactory, Bloomberg, etc.
     """
 
     def get_headlines(self, keywords: List[str] = None) -> List[str]:

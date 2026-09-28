@@ -52,7 +52,7 @@ class SmartMarketCloseHandler:
     Intelligent market close handler.
 
     Logic:
-    1. Profit + Near Close -> Close to secure profit (jangan sampai hilang TP)
+    1. Profit + Near Close -> Close to secure profit (don't lose the TP)
     2. Loss + Still in range -> Hold, wait for volatility on reopen
     3. Loss + Weekend approaching -> Consider cut loss (gap risk)
 
@@ -490,7 +490,7 @@ class SmartPositionManager:
             )
 
             if close_analysis.recommendation == "CLOSE_PROFIT":
-                # Take profit before market close - jangan sampai hilang TP!
+                # Take profit before market close - don't lose the TP!
                 return PositionAction(
                     ticket=ticket,
                     action="CLOSE",

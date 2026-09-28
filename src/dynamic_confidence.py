@@ -1,12 +1,12 @@
 """
 Dynamic Confidence System
 =========================
-Menyesuaikan confidence threshold berdasarkan kondisi market.
+Adjusts the confidence threshold based on market conditions.
 
-Prinsip:
-- Market bagus (trending, session bagus) -> threshold lebih rendah (60%)
-- Market jelek (choppy, low liquidity) -> threshold lebih tinggi (75%)
-- Multiple konfirmasi -> threshold lebih rendah
+Principles:
+- Good market (trending, good session) -> lower threshold (60%)
+- Bad market (choppy, low liquidity) -> higher threshold (75%)
+- Multiple confirmations -> lower threshold
 """
 
 from dataclasses import dataclass
@@ -16,17 +16,17 @@ from loguru import logger
 
 
 class MarketQuality(Enum):
-    """Kualitas market untuk trading."""
-    EXCELLENT = "excellent"   # Semua kondisi bagus
-    GOOD = "good"            # Sebagian besar bagus
-    MODERATE = "moderate"    # Biasa saja
-    POOR = "poor"           # Kurang bagus
-    AVOID = "avoid"         # Jangan trading
+    """Market quality for trading."""
+    EXCELLENT = "excellent"   # All conditions good
+    GOOD = "good"            # Mostly good
+    MODERATE = "moderate"    # Average
+    POOR = "poor"           # Below average
+    AVOID = "avoid"         # Do not trade
 
 
 @dataclass
 class MarketAnalysis:
-    """Hasil analisis market."""
+    """Market analysis result."""
     quality: MarketQuality
     confidence_threshold: float
     reasons: list
@@ -35,14 +35,14 @@ class MarketAnalysis:
 
 class DynamicConfidenceManager:
     """
-    Manager untuk menentukan confidence threshold secara dinamis.
+    Manager that sets the confidence threshold dynamically.
 
-    Faktor yang dipertimbangkan:
-    1. Session (London-NY overlap = terbaik)
+    Factors considered:
+    1. Session (London-NY overlap = best)
     2. Regime (medium volatility = ideal)
     3. Trend clarity (trending > ranging)
-    4. SMC confluence (ada OB/FVG = bonus)
-    5. Spread (rendah = bagus)
+    4. SMC confluence (OB/FVG present = bonus)
+    5. Spread (low = good)
     """
 
     def __init__(
@@ -72,28 +72,28 @@ class DynamicConfidenceManager:
         ml_confidence: float = 0,
     ) -> MarketAnalysis:
         """
-        Analisis kondisi market dan tentukan threshold yang tepat.
+        Analyze market conditions and pick the right threshold.
 
         Returns:
-            MarketAnalysis dengan threshold yang disarankan
+            MarketAnalysis with the recommended threshold
         """
-        score = 50  # Start dari tengah
+        score = 50  # Start from the middle
         reasons = []
 
         # 1. SESSION ANALYSIS (±20 points)
         session_lower = session.lower()
         if "overlap" in session_lower or "golden" in session_lower:
             score += 20
-            reasons.append("[+] Session: London-NY Overlap (terbaik)")
+            reasons.append("[+] Session: London-NY Overlap (best)")
         elif "london" in session_lower:
             score += 15
-            reasons.append("[+] Session: London (bagus)")
+            reasons.append("[+] Session: London (good)")
         elif "new york" in session_lower or "ny" in session_lower:
             score += 10
-            reasons.append("[+] Session: New York (bagus)")
+            reasons.append("[+] Session: New York (good)")
         elif "asia" in session_lower or "tokyo" in session_lower:
             score += 0
-            reasons.append("[!] Session: Asia (volatilitas rendah)")
+            reasons.append("[!] Session: Asia (low volatility)")
         elif "closed" in session_lower or "weekend" in session_lower:
             score -= 30
             reasons.append("[X] Market closed/weekend")
@@ -108,13 +108,13 @@ class DynamicConfidenceManager:
             reasons.append("[+] Regime: Medium volatility (ideal)")
         elif regime_lower == "low_volatility":
             score += 5
-            reasons.append("[!] Regime: Low volatility (hati-hati ranging)")
+            reasons.append("[!] Regime: Low volatility (careful, ranging)")
         elif regime_lower == "high_volatility":
             score -= 5
-            reasons.append("[!] Regime: High volatility (lot kecil!)")
+            reasons.append("[!] Regime: High volatility (small lot!)")
         elif regime_lower == "crisis":
             score -= 25
-            reasons.append("[X] Regime: Crisis (hindari trading)")
+            reasons.append("[X] Regime: Crisis (avoid trading)")
 
         # 3. VOLATILITY ANALYSIS (±10 points)
         vol_lower = volatility.lower()
@@ -123,19 +123,19 @@ class DynamicConfidenceManager:
             reasons.append("[+] Volatility: Medium (ideal)")
         elif vol_lower == "low":
             score += 0
-            reasons.append("[!] Volatility: Low (pergerakan kecil)")
+            reasons.append("[!] Volatility: Low (small moves)")
         elif vol_lower == "high":
             score -= 5
             reasons.append("[!] Volatility: High")
         elif vol_lower == "extreme":
             score -= 10
-            reasons.append("[!] Volatility: Extreme (hati-hati)")
+            reasons.append("[!] Volatility: Extreme (careful)")
 
         # 4. TREND CLARITY (±10 points)
         trend_lower = trend_direction.lower()
         if trend_lower in ["uptrend", "downtrend", "strong_up", "strong_down"]:
             score += 10
-            reasons.append(f"[+] Trend: {trend_direction} (jelas)")
+            reasons.append(f"[+] Trend: {trend_direction} (clear)")
         elif trend_lower in ["neutral", "ranging", "sideways"]:
             score -= 5
             reasons.append("[!] Trend: Ranging/sideways")
@@ -143,7 +143,7 @@ class DynamicConfidenceManager:
         # 5. SMC CONFLUENCE (±10 points)
         if has_smc_signal:
             score += 10
-            reasons.append("[+] SMC: Ada konfirmasi (OB/FVG/BOS)")
+            reasons.append("[+] SMC: Confirmed (OB/FVG/BOS)")
 
         # 6. ML ALIGNMENT (±5 points)
         if ml_confidence >= 0.70:
@@ -160,19 +160,19 @@ class DynamicConfidenceManager:
         # London/NY session should have reasonable opportunity to trade
         if score >= 80:
             quality = MarketQuality.EXCELLENT
-            threshold = self.min_threshold  # 60% - kondisi terbaik
+            threshold = self.min_threshold  # 60% - best conditions
         elif score >= 65:
             quality = MarketQuality.GOOD
-            threshold = 0.65  # 65% - kondisi bagus (turun dari 75%)
+            threshold = 0.65  # 65% - good conditions (down from 75%)
         elif score >= 50:
             quality = MarketQuality.MODERATE
-            threshold = 0.70  # 70% - kondisi biasa (turun dari 80%)
+            threshold = 0.70  # 70% - average conditions (down from 80%)
         elif score >= 35:
             quality = MarketQuality.POOR
-            threshold = 0.80  # 80% - kondisi kurang bagus (turun dari 85%)
+            threshold = 0.80  # 80% - below-average conditions (down from 85%)
         else:
             quality = MarketQuality.AVOID
-            threshold = self.max_threshold  # 85% - hindari trading
+            threshold = self.max_threshold  # 85% - avoid trading
 
         # Track for logging
         self._last_quality = quality.value
@@ -192,7 +192,7 @@ class DynamicConfidenceManager:
         analysis: MarketAnalysis,
     ) -> Tuple[bool, str]:
         """
-        Tentukan apakah boleh entry berdasarkan analisis.
+        Decide whether entry is allowed based on the analysis.
 
         Returns:
             (can_entry, reason)
@@ -207,7 +207,7 @@ class DynamicConfidenceManager:
             return False, f"Wait: ML {ml_confidence:.0%} < threshold {analysis.confidence_threshold:.0%} (need +{gap:.0%})"
 
     def get_threshold_summary(self, analysis: MarketAnalysis) -> str:
-        """Get summary string untuk logging."""
+        """Get summary string for logging."""
         return (
             f"Market: {analysis.quality.value.upper()} "
             f"(score={analysis.score}) -> "
@@ -219,8 +219,8 @@ def create_dynamic_confidence() -> DynamicConfidenceManager:
     """Create dynamic confidence manager - BALANCED (validated by backtest)."""
     return DynamicConfidenceManager(
         base_threshold=0.70,   # Default 70% - reasonable threshold
-        min_threshold=0.60,    # Kondisi terbaik bisa turun ke 60%
-        max_threshold=0.85,    # Kondisi jelek naik ke 85%
+        min_threshold=0.60,    # Best conditions can go down to 60%
+        max_threshold=0.85,    # Bad conditions go up to 85%
     )
 
 
@@ -228,7 +228,7 @@ if __name__ == "__main__":
     # Test
     manager = create_dynamic_confidence()
 
-    print("=== Test 1: Kondisi Ideal ===")
+    print("=== Test 1: Ideal Conditions ===")
     analysis = manager.analyze_market(
         session="London-NY Overlap (GOLDEN)",
         regime="medium_volatility",
@@ -248,7 +248,7 @@ if __name__ == "__main__":
     can_entry, reason = manager.get_entry_decision(0.68, analysis)
     print(f"\nCan Entry (68%): {can_entry} - {reason}")
 
-    print("\n=== Test 2: Kondisi Jelek ===")
+    print("\n=== Test 2: Bad Conditions ===")
     analysis2 = manager.analyze_market(
         session="Asia (low liquidity)",
         regime="low_volatility",

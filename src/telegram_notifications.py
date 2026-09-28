@@ -36,6 +36,28 @@ class TelegramNotifications:
             bot: TradingBot instance (has .telegram, .mt5, .smart_risk, etc.)
         """
         self.bot = bot
+        self._last_news_status = None
+
+    async def send_news_alert_if_changed(self):
+        """Alert once when a news block starts and once when it ends."""
+        status, reason = self._news_status()
+        previous, self._last_news_status = self._last_news_status, status
+        if previous is None or status == previous or "OFF" in (status, previous):
+            return
+        if status == "BLOCKED":
+            await self.bot.telegram.send_news_alert(
+                event_name=reason.replace("High-impact news: ", ""),
+                condition="DANGER_NEWS",
+                reason="No new entries; open positions still managed",
+                buffer_minutes=self.bot.news_agent.high_impact_buffer_minutes,
+            )
+        else:
+            await self.bot.telegram.send_news_alert(
+                event_name="News window over",
+                condition="SAFE",
+                reason="New entries allowed again",
+                buffer_minutes=self.bot.news_agent.high_impact_buffer_minutes,
+            )
 
     def _news_status(self):
         """(status, reason) for the News line: SAFE / BLOCKED / OFF."""
