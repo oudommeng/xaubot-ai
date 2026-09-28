@@ -139,10 +139,12 @@ docker\scripts\docker-start.bat
 ```
 
 **Available services:**
-- Dashboard: http://localhost:3000
+- Dashboard: http://localhost:3000 (change with `DASHBOARD_PORT` in `.env` if 3000 is taken)
 - API: http://localhost:8000
 - API docs: http://localhost:8000/docs
 - Database: localhost:5432
+
+All ports listen on `127.0.0.1` only (the API has no login). The API only accepts browser requests from the dashboard (`CORS_ORIGINS`).
 
 **Full Docker documentation:** See [docker/docs/DOCKER.md](docker/docs/DOCKER.md)
 

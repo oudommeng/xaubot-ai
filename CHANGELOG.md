@@ -20,11 +20,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Toggle `news_filter` in `data/filter_config.json`; Telegram shows SAFE / BLOCKED / OFF
 
 ### Changed
+- Web dashboard in English: Bot Assistant card, About dialog, Docs page menu (categories, titles,
+  descriptions), search box, diagram hint; English date locale
 - All Indonesian log messages, Telegram texts, comments and docstrings in `main_live.py` and `src/` translated to English
   (e.g. `Zona bahaya: Likuiditas rendah, spread tinggi` → `Danger zone: Low liquidity, high spread`)
 
 ### Fixed
 - `docker-compose.yml`: PostgreSQL port bound to 127.0.0.1 only (default password is public)
+- `docker-compose.yml`: API, dashboard and pgAdmin ports bound to 127.0.0.1 only
+- Dashboard Bot Assistant showed "Last analysis: Invalid Date" (parsed a plain `HH:MM:SS` time as a date)
+- Dashboard Bot Assistant listed wrong session open times (Sydney 04:00 → 06:00, London 14:00 → 15:00 WIB)
+- Dashboard healthcheck used `localhost` (IPv6 inside the container) and always reported unhealthy
+- API CORS restricted to the dashboard origin (`CORS_ORIGINS`, follows `DASHBOARD_PORT`) instead of `*`
+- Dashboard build failed: `web-dashboard/src/lib/utils.ts` was never committed because the Python `lib/` rule in
+  `.gitignore` hid it. Recreated it and un-ignored `web-dashboard/src/lib/`
 - `train_models.py`: walk-forward validation overwrote `models/xgboost_model.pkl` with its last
   ~500-bar fold; the full-data model is now kept
 - News agent always reported SAFE when `copy_ticks_from("XAUUSD")` failed (symbol differs per broker)
