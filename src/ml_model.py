@@ -438,7 +438,30 @@ class TradingModel:
         """Walk-forward optimization and validation."""
         results = []
         n = len(df)
-        
+
+        # Folds are validation only: don't save them or leave them as the live model
+        saved_state = {
+            k: getattr(self, k)
+            for k in ("model", "fitted", "feature_names", "model_path",
+                      "_feature_importance", "_train_metrics")
+        }
+        self.model_path = None
+        try:
+            self._walk_forward_folds(df, feature_cols, target_col, train_window,
+                                     test_window, step, n, results)
+        finally:
+            for k, v in saved_state.items():
+                setattr(self, k, v)
+
+        if results:
+            avg_train = np.mean([r[0] for r in results])
+            avg_test = np.mean([r[1] for r in results])
+            logger.info(f"Walk-forward: Avg Train AUC={avg_train:.4f}, Avg Test AUC={avg_test:.4f}")
+
+        return results
+
+    def _walk_forward_folds(self, df, feature_cols, target_col, train_window,
+                            test_window, step, n, results):
         for start in range(0, n - train_window - test_window, step):
             train_end = start + train_window
             test_end = train_end + test_window
@@ -477,13 +500,6 @@ class TradingModel:
             test_auc = self._evaluate(dtest)
             
             results.append((train_auc, test_auc))
-        
-        if results:
-            avg_train = np.mean([r[0] for r in results])
-            avg_test = np.mean([r[1] for r in results])
-            logger.info(f"Walk-forward: Avg Train AUC={avg_train:.4f}, Avg Test AUC={avg_test:.4f}")
-        
-        return results
 
 
 def get_default_feature_columns() -> List[str]:
