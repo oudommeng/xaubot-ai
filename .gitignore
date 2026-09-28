@@ -90,6 +90,11 @@ nul
 data/bot_status.json
 data/signal_persistence.json
 data/model_metrics.json
+# Runtime state rewritten while the bot runs (created automatically)
+data/bot.lock
+data/risk_state.txt
+data/retrain_history.txt
+data/training_data.parquet
 
 # Claude Code local settings
 .claude/
