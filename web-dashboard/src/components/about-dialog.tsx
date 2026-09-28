@@ -40,20 +40,20 @@ export function AboutDialog({ children }: { children: React.ReactNode }) {
         <div className="space-y-5 pt-4">
           {/* Description */}
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Bot trading XAUUSD (Emas) otomatis berbasis AI yang menggabungkan{" "}
+            AI-powered automated XAUUSD (Gold) trading bot combining{" "}
             <strong className="text-foreground">XGBoost Machine Learning</strong>,{" "}
-            <strong className="text-foreground">Smart Money Concepts</strong> (SMC), dan{" "}
-            <strong className="text-foreground">Hidden Markov Model</strong> untuk deteksi regime pasar pada
+            <strong className="text-foreground">Smart Money Concepts</strong> (SMC), and{" "}
+            <strong className="text-foreground">Hidden Markov Model</strong> market regime detection on
             MetaTrader 5.
           </p>
 
           {/* Tech Stack */}
           <div className="grid grid-cols-2 gap-2">
             {[
-              { icon: Brain, label: "XGBoost ML", desc: "37-fitur prediksi sinyal" },
+              { icon: Brain, label: "XGBoost ML", desc: "37-feature signal prediction" },
               { icon: TrendingUp, label: "Smart Money", desc: "OB, FVG, BOS, CHoCH" },
-              { icon: Shield, label: "HMM Regime", desc: "3-state deteksi pasar" },
-              { icon: Code2, label: "Polars Engine", desc: "Data processing cepat" },
+              { icon: Shield, label: "HMM Regime", desc: "3-state market detection" },
+              { icon: Code2, label: "Polars Engine", desc: "Fast data processing" },
             ].map((item) => (
               <div
                 key={item.label}
@@ -97,8 +97,8 @@ export function AboutDialog({ children }: { children: React.ReactNode }) {
               <div>
                 <p className="text-xs font-semibold">MIT License</p>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Perangkat lunak sumber terbuka — bebas digunakan, dimodifikasi, dan
-                  didistribusikan sesuai ketentuan lisensi MIT.
+                  Open-source software — free to use, modify and
+                  distribute under the terms of the MIT license.
                 </p>
               </div>
             </div>
@@ -108,9 +108,9 @@ export function AboutDialog({ children }: { children: React.ReactNode }) {
               <div>
                 <p className="text-xs font-semibold">Disclaimer</p>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Perangkat lunak ini dibuat <strong className="text-foreground">hanya untuk tujuan edukasi dan riset</strong>.
-                  Trading dengan margin memiliki risiko tinggi. Kinerja masa lalu bukan
-                  indikasi hasil di masa depan. Gunakan dengan risiko Anda sendiri.
+                  This software is made <strong className="text-foreground">for educational and research purposes only</strong>.
+                  Margin trading carries high risk. Past performance is not
+                  indicative of future results. Use at your own risk.
                 </p>
               </div>
             </div>

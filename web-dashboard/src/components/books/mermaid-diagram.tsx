@@ -247,7 +247,7 @@ export function MermaidDiagram({ chart }: MermaidDiagramProps) {
 
         <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
           <Move className="h-3 w-3" />
-          <span>Drag untuk geser, scroll untuk zoom</span>
+          <span>Drag to pan, scroll to zoom</span>
         </div>
       </div>
 

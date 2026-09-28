@@ -55,15 +55,15 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 const categoryIcons: Record<string, LucideIcon> = {
-  "Mulai di Sini": BookOpen,
-  "AI & Analisis": Brain,
-  "Risiko & Proteksi": Shield,
-  "Proses Trading": TrendingUp,
-  "Infrastruktur": Settings,
-  "Konektor & Konfigurasi": Plug,
+  "Getting Started": BookOpen,
+  "AI & Analysis": Brain,
+  "Risk & Protection": Shield,
+  "Trading Process": TrendingUp,
+  "Infrastructure": Settings,
+  "Connectors & Config": Plug,
   "Engine & Data": Database,
-  "Orkestrator": Play,
-  "Analisis": AlertTriangle,
+  "Orchestrator": Play,
+  "Analysis": AlertTriangle,
 };
 
 export default function BooksPage() {
@@ -130,7 +130,7 @@ export default function BooksPage() {
             <button
               onClick={() => setSidebarOpen((p) => !p)}
               className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-surface-light transition-colors text-muted-foreground hover:text-foreground"
-              title={sidebarOpen ? "Tutup sidebar" : "Buka sidebar"}
+              title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
             >
               {sidebarOpen ? (
                 <PanelLeftClose className="h-4 w-4" />
@@ -180,7 +180,7 @@ export default function BooksPage() {
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Cari dokumen..."
+                placeholder="Search docs..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-8 pr-8 py-1.5 rounded-lg bg-surface-light border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-amber-400/60 dark:focus:border-amber-500/40 focus:ring-1 focus:ring-amber-200/40 dark:focus:ring-amber-500/20"

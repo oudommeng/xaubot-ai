@@ -45,12 +45,12 @@ function generateInsights(data: TradingStatus): Insight[] {
   const spread = data.spread?.toFixed(1) || "?";
 
   // ═══════════════════════════════════════════
-  // 1. STATUS MARKET
+  // 1. MARKET STATUS
   // ═══════════════════════════════════════════
   if (data.marketClose && !data.marketClose.marketOpen) {
     insights.push({
       icon: <Coffee className="h-3.5 w-3.5" />,
-      text: "Market sedang tutup. Bot dalam mode standby — tidak ada analisis atau eksekusi. Menunggu market buka kembali.",
+      text: "Market is closed. Bot is on standby — no analysis or execution. Waiting for the market to reopen.",
       type: "info",
     });
     return insights;
@@ -60,57 +60,57 @@ function generateInsights(data: TradingStatus): Insight[] {
     const hrs = data.marketClose.hoursToWeekendClose;
     insights.push({
       icon: <AlertTriangle className="h-3.5 w-3.5" />,
-      text: `Peringatan: Weekend close dalam ${hrs.toFixed(1)} jam (Sabtu 05:00 WIB). Bot akan menolak entry baru dan memastikan semua posisi ditutup sebelum market close.`,
+      text: `Warning: weekend close in ${hrs.toFixed(1)} hours (Saturday 05:00 WIB). The bot will reject new entries and make sure all positions are closed before the market closes.`,
       type: "warning",
     });
   }
 
   // ═══════════════════════════════════════════
-  // 2. RANGKUMAN SITUASI (top-level summary)
+  // 2. SITUATION SUMMARY (top-level)
   // ═══════════════════════════════════════════
   if (hasPositions) {
     const totalProfit = data.positions.reduce((sum, p) => sum + p.profit, 0);
     const profitStr = totalProfit >= 0 ? `+$${totalProfit.toFixed(2)}` : `-$${Math.abs(totalProfit).toFixed(2)}`;
     insights.push({
       icon: <Activity className="h-3.5 w-3.5" />,
-      text: `Sedang dalam posisi (${data.positions.length} trade aktif, total P/L: ${profitStr}). Bot memantau exit conditions setiap 5 detik.`,
+      text: `In position (${data.positions.length} active trade(s), total P/L: ${profitStr}). Bot checks exit conditions every 5 seconds.`,
       type: totalProfit >= 0 ? "success" : "warning",
     });
   } else {
     insights.push({
       icon: <Eye className="h-3.5 w-3.5" />,
-      text: `Tidak ada posisi terbuka. Bot menganalisis market setiap candle M15 untuk mencari peluang entry.`,
+      text: `No open positions. Bot analyzes the market every M15 candle looking for entry opportunities.`,
       type: "info",
     });
   }
 
   // ═══════════════════════════════════════════
-  // 3. SESI & WAKTU
+  // 3. SESSION & TIME
   // ═══════════════════════════════════════════
   if (data.isGoldenTime) {
     insights.push({
       icon: <Zap className="h-3.5 w-3.5" />,
-      text: `Sesi ${sessionName} — GOLDEN TIME! Overlap London-NY menghasilkan volatilitas tertinggi. Lot size dinaikkan ${data.sessionMultiplier || 1}x. Peluang terbaik untuk entry.`,
+      text: `${sessionName} session — GOLDEN TIME! The London-NY overlap has the highest volatility. Lot size multiplied by ${data.sessionMultiplier || 1}x. Best entry opportunities.`,
       type: "success",
     });
   } else if (!data.canTrade) {
-    const nextSession = data.session?.toLowerCase() === "off_hours" ? "Sydney (04:00 WIB)"
-      : data.session?.toLowerCase() === "sydney" ? "London (14:00 WIB)"
-      : "sesi berikutnya";
+    const nextSession = data.session?.toLowerCase() === "off_hours" ? "Sydney (06:00 WIB)"
+      : data.session?.toLowerCase() === "sydney" ? "London (15:00 WIB)"
+      : "the next session";
     insights.push({
       icon: <Clock className="h-3.5 w-3.5" />,
-      text: `Sesi ${sessionName} — di luar jam trading aktif. Volume rendah, spread bisa melebar. Menunggu ${nextSession}.`,
+      text: `${sessionName} session — outside active trading hours. Low volume, spread can widen. Waiting for ${nextSession}.`,
       type: "info",
     });
   } else {
     const multiplierText = data.sessionMultiplier && data.sessionMultiplier > 1
       ? ` Lot multiplier: ${data.sessionMultiplier}x.`
       : data.sessionMultiplier && data.sessionMultiplier < 1
-      ? ` SAFE MODE: lot dikurangi ${data.sessionMultiplier}x.`
+      ? ` SAFE MODE: lot reduced to ${data.sessionMultiplier}x.`
       : "";
     insights.push({
       icon: <Clock className="h-3.5 w-3.5" />,
-      text: `Sesi ${sessionName} aktif — market terbuka untuk trading.${multiplierText}`,
+      text: `${sessionName} session active — market open for trading.${multiplierText}`,
       type: "info",
     });
   }
@@ -118,20 +118,20 @@ function generateInsights(data: TradingStatus): Insight[] {
   if (data.timeFilter?.isBlocked) {
     insights.push({
       icon: <AlertTriangle className="h-3.5 w-3.5" />,
-      text: `Jam ${data.timeFilter.wibHour}:00 WIB diblokir oleh time filter (jam-jam dengan win rate rendah secara historis). Entry ditunda.`,
+      text: `${data.timeFilter.wibHour}:00 WIB is blocked by the time filter (hours with a historically low win rate). Entry postponed.`,
       type: "warning",
     });
   }
 
   // ═══════════════════════════════════════════
-  // 4. KONDISI MARKET (regime + spread + H1)
+  // 4. MARKET CONDITIONS (regime + spread + H1)
   // ═══════════════════════════════════════════
   const regimeDetail = regimeName.includes("trending")
-    ? `Market trending (HMM confidence ${regimeConf}%) — kondisi ideal. Harga bergerak terarah, sinyal lebih reliable.`
+    ? `Market trending (HMM confidence ${regimeConf}%) — ideal conditions. Price moves with direction, signals are more reliable.`
     : regimeName.includes("high_volatility") || regimeName.includes("volatile")
-    ? `Volatilitas tinggi (HMM ${regimeConf}%) — HATI-HATI! Pergerakan harga liar, SL bisa cepat tersentuh. Bot menaikkan spread tolerance.`
+    ? `High volatility (HMM ${regimeConf}%) — CAREFUL! Wild price moves, SL can be hit quickly. Bot raises its spread tolerance.`
     : regimeName.includes("low_volatility") || regimeName.includes("ranging")
-    ? `Volatilitas rendah / ranging (HMM ${regimeConf}%) — market diam, peluang kecil. Bot menunggu breakout atau perubahan regime.`
+    ? `Low volatility / ranging (HMM ${regimeConf}%) — quiet market, few opportunities. Bot waits for a breakout or a regime change.`
     : `Regime: ${regimeName} (HMM ${regimeConf}%).`;
 
   insights.push({
@@ -147,10 +147,10 @@ function generateInsights(data: TradingStatus): Insight[] {
   // H1 Bias detail
   if (h1Bias && h1Bias !== "N/A") {
     const h1Text = h1Bias === "BULLISH"
-      ? `H1 Bias: BULLISH — harga di atas EMA20 H1, tren naik jangka menengah. Entry BUY diizinkan.`
+      ? `H1 Bias: BULLISH — price above H1 EMA20, medium-term uptrend. BUY entries allowed.`
       : h1Bias === "BEARISH"
-      ? `H1 Bias: BEARISH — harga di bawah EMA20 H1, tren turun jangka menengah. Entry SELL diizinkan.`
-      : `H1 Bias: NEUTRAL — harga dekat EMA20 H1, tidak ada tren jelas. Entry di-hold sampai arah terbentuk.`;
+      ? `H1 Bias: BEARISH — price below H1 EMA20, medium-term downtrend. SELL entries allowed.`
+      : `H1 Bias: NEUTRAL — price near H1 EMA20, no clear trend. Entries on hold until a direction forms.`;
     insights.push({
       icon: h1Bias === "BULLISH" ? <TrendingUp className="h-3.5 w-3.5" />
         : h1Bias === "BEARISH" ? <TrendingDown className="h-3.5 w-3.5" />
@@ -163,12 +163,12 @@ function generateInsights(data: TradingStatus): Insight[] {
   // Spread
   insights.push({
     icon: <Activity className="h-3.5 w-3.5" />,
-    text: `Spread saat ini: ${spread} pips. ${parseFloat(spread) > 40 ? "Cukup lebar — entry mungkin ditunda." : parseFloat(spread) > 25 ? "Normal." : "Ketat — kondisi bagus."}`,
+    text: `Current spread: ${spread} pips. ${parseFloat(spread) > 40 ? "Quite wide — entry may be postponed." : parseFloat(spread) > 25 ? "Normal." : "Tight — good conditions."}`,
     type: parseFloat(spread) > 40 ? "warning" : "info",
   });
 
   // ═══════════════════════════════════════════
-  // 5. ANALISIS SINYAL
+  // 5. SIGNAL ANALYSIS
   // ═══════════════════════════════════════════
   if (smcSignal !== "NONE" && smcSignal !== "HOLD") {
     const smcReason = data.smc?.reason || "";
@@ -178,32 +178,32 @@ function generateInsights(data: TradingStatus): Insight[] {
     if (mlAgrees && mlAboveThreshold) {
       insights.push({
         icon: <Zap className="h-3.5 w-3.5" />,
-        text: `SINYAL KUAT: SMC ${smcSignal} (${smcConf}%) + ML ${mlSignal} (${mlConf}%) — keduanya sepakat dan di atas threshold ${dynThreshold}%.${smcReason ? ` SMC: ${smcReason}.` : ""} Tinggal filter lain terpenuhi untuk entry.`,
+        text: `STRONG SIGNAL: SMC ${smcSignal} (${smcConf}%) + ML ${mlSignal} (${mlConf}%) — both agree and are above the ${dynThreshold}% threshold.${smcReason ? ` SMC: ${smcReason}.` : ""} Only the other filters need to pass for entry.`,
         type: "success",
       });
     } else if (mlAgrees && !mlAboveThreshold) {
       insights.push({
         icon: <Target className="h-3.5 w-3.5" />,
-        text: `SMC ${smcSignal} (${smcConf}%) & ML setuju ${mlSignal}, tapi confidence ML (${mlConf}%) masih di bawah threshold (${dynThreshold}%). Perlu lebih yakin.`,
+        text: `SMC ${smcSignal} (${smcConf}%) & ML agree on ${mlSignal}, but ML confidence (${mlConf}%) is still below the threshold (${dynThreshold}%). Needs more conviction.`,
         type: "warning",
       });
     } else {
       insights.push({
         icon: <Minus className="h-3.5 w-3.5" />,
-        text: `Sinyal konflik — SMC: ${smcSignal} (${smcConf}%) vs ML: ${mlSignal} (${mlConf}%). Bot menunggu kedua model sinkron sebelum entry.${smcReason ? ` SMC: ${smcReason}.` : ""}`,
+        text: `Conflicting signals — SMC: ${smcSignal} (${smcConf}%) vs ML: ${mlSignal} (${mlConf}%). Bot waits for both models to agree before entry.${smcReason ? ` SMC: ${smcReason}.` : ""}`,
         type: "info",
       });
     }
   } else {
     insights.push({
       icon: <Minus className="h-3.5 w-3.5" />,
-      text: `Belum ada sinyal — SMC: ${smcSignal}, ML: ${mlSignal} (${mlConf}%). Menunggu setup terbentuk di candle M15 berikutnya.`,
+      text: `No signal yet — SMC: ${smcSignal}, ML: ${mlSignal} (${mlConf}%). Waiting for a setup to form on the next M15 candle.`,
       type: "info",
     });
   }
 
   // ═══════════════════════════════════════════
-  // 6. POSISI TERBUKA (detail)
+  // 6. OPEN POSITIONS (detail)
   // ═══════════════════════════════════════════
   if (hasPositions) {
     for (const pos of data.positions) {
@@ -213,7 +213,7 @@ function generateInsights(data: TradingStatus): Insight[] {
 
       const ageMinutes = detail?.tradeHours ? detail.tradeHours * 60 : 0;
       const ageText = ageMinutes > 0
-        ? ageMinutes < 60 ? `${ageMinutes.toFixed(0)}m` : `${(ageMinutes / 60).toFixed(1)}j`
+        ? ageMinutes < 60 ? `${ageMinutes.toFixed(0)}m` : `${(ageMinutes / 60).toFixed(1)}h`
         : "";
       const momentumVal = detail?.momentum ?? 0;
       const tpProb = detail?.tpProbability ?? 0;
@@ -223,15 +223,15 @@ function generateInsights(data: TradingStatus): Insight[] {
 
       let analysis = "";
       if (pos.profit >= 20) {
-        analysis = `Profit sangat baik! Trailing SL aktif mengunci keuntungan. Peak: $${peakProfit.toFixed(2)}, drawdown dari peak: $${drawdown.toFixed(2)}. TP probability: ${tpProb.toFixed(0)}%.`;
+        analysis = `Very good profit! Trailing SL is active and locking in gains. Peak: $${peakProfit.toFixed(2)}, drawdown from peak: $${drawdown.toFixed(2)}. TP probability: ${tpProb.toFixed(0)}%.`;
       } else if (pos.profit >= 10) {
-        analysis = `Profit bagus — momentum ${momentumVal > 0 ? "positif" : "melemah"} (${momentumVal.toFixed(0)}). Peak profit: $${peakProfit.toFixed(2)}. ${tpProb > 50 ? "Peluang capai TP masih tinggi." : "Mulai pantau untuk ambil profit."}`;
+        analysis = `Good profit — momentum ${momentumVal > 0 ? "positive" : "weakening"} (${momentumVal.toFixed(0)}). Peak profit: $${peakProfit.toFixed(2)}. ${tpProb > 50 ? "Chance of reaching TP is still high." : "Start watching to take profit."}`;
       } else if (pos.profit >= 0) {
-        analysis = `Masih floating ${profitStr} (${ageText}). Momentum: ${momentumVal.toFixed(0)}. ${ageMinutes < 15 ? "Masih dalam grace period 15 menit — biarkan trade berkembang." : "Memantau arah selanjutnya."}`;
+        analysis = `Floating ${profitStr} (${ageText}). Momentum: ${momentumVal.toFixed(0)}. ${ageMinutes < 15 ? "Still in the 15-minute grace period — let the trade develop." : "Watching the next move."}`;
       } else if (ageMinutes < 15) {
-        analysis = `Loss ${profitStr} tapi masih GRACE PERIOD (${ageText}/15m). Early cut TIDAK aktif — memberi waktu 1 candle M15 untuk develop. Hard SL tetap jadi safety net.`;
+        analysis = `Loss ${profitStr} but still in the GRACE PERIOD (${ageText}/15m). Early cut is NOT active — giving it 1 M15 candle to develop. Hard SL remains the safety net.`;
       } else {
-        analysis = `Loss ${profitStr} (${ageText}), momentum: ${momentumVal.toFixed(0)}. ${momentumVal < -50 ? "Momentum lemah — early cut bisa trigger kapan saja!" : "Momentum belum terlalu buruk, masih ada harapan recovery."}${reversalWarns > 0 ? ` Reversal warning: ${reversalWarns}x.` : ""}`;
+        analysis = `Loss ${profitStr} (${ageText}), momentum: ${momentumVal.toFixed(0)}. ${momentumVal < -50 ? "Weak momentum — early cut can trigger at any time!" : "Momentum not too bad yet, recovery still possible."}${reversalWarns > 0 ? ` Reversal warning: ${reversalWarns}x.` : ""}`;
       }
 
       insights.push({
@@ -246,7 +246,7 @@ function generateInsights(data: TradingStatus): Insight[] {
   }
 
   // ═══════════════════════════════════════════
-  // 7. KENAPA TIDAK ENTRY (detail per filter)
+  // 7. WHY NO ENTRY (detail per filter)
   // ═══════════════════════════════════════════
   if (!hasPositions) {
     const filters = data.entryFilters || [];
@@ -257,13 +257,13 @@ function generateInsights(data: TradingStatus): Insight[] {
     if (blockers.length > 0) {
       insights.push({
         icon: <XCircle className="h-3.5 w-3.5" />,
-        text: `Entry diblokir oleh ${blockers.length} filter (${passedCount}/${filters.length} lolos). Filter pertama yang gagal: "${blockers[0].name}" — ${blockers[0].detail || "tidak memenuhi syarat"}. Bot tidak akan entry sampai SEMUA filter hijau.`,
+        text: `Entry blocked by ${blockers.length} filter(s) (${passedCount}/${filters.length} passed). First failing filter: "${blockers[0].name}" — ${blockers[0].detail || "conditions not met"}. The bot will not enter until ALL filters are green.`,
         type: "warning",
       });
     } else if (filters.length > 0 && blockers.length === 0) {
       insights.push({
         icon: <CheckCircle2 className="h-3.5 w-3.5" />,
-        text: `Semua ${filters.length} filter terpenuhi! Bot siap entry begitu ada sinyal valid dari SMC + ML.`,
+        text: `All ${filters.length} filters passed! Bot is ready to enter as soon as there is a valid SMC + ML signal.`,
         type: "success",
       });
     }
@@ -272,31 +272,31 @@ function generateInsights(data: TradingStatus): Insight[] {
       const names = disabledFilters.map((f) => f.name).join(", ");
       insights.push({
         icon: <AlertTriangle className="h-3.5 w-3.5" />,
-        text: `${disabledFilters.length} filter dinonaktifkan manual: ${names}. Filter ini di-bypass (auto-pass). Aktifkan kembali di panel Filters jika diperlukan.`,
+        text: `${disabledFilters.length} filter(s) manually disabled: ${names}. These filters are bypassed (auto-pass). Re-enable them in the Filters panel if needed.`,
         type: "warning",
       });
     }
   }
 
   // ═══════════════════════════════════════════
-  // 8. RISK & MODAL
+  // 8. RISK & CAPITAL
   // ═══════════════════════════════════════════
   const netPnl = (data.dailyProfit || 0) - (data.dailyLoss || 0);
   if (data.dailyLoss > 0 || data.dailyProfit > 0) {
     const pnlStr = netPnl >= 0 ? `+$${netPnl.toFixed(2)}` : `-$${Math.abs(netPnl).toFixed(2)}`;
     const remaining = data.riskMode?.remainingDailyRisk;
-    const riskDetail = remaining !== undefined ? ` Sisa risk harian: $${remaining.toFixed(0)}.` : "";
+    const riskDetail = remaining !== undefined ? ` Remaining daily risk: $${remaining.toFixed(0)}.` : "";
 
     if (netPnl < 0 && remaining !== undefined && remaining < 50) {
       insights.push({
         icon: <ShieldAlert className="h-3.5 w-3.5" />,
-        text: `⚠️ P/L hari ini: ${pnlStr} (loss $${data.dailyLoss.toFixed(2)}, profit $${data.dailyProfit.toFixed(2)}).${riskDetail} Mendekati batas — bot sangat konservatif.`,
+        text: `⚠️ Today's P/L: ${pnlStr} (loss $${data.dailyLoss.toFixed(2)}, profit $${data.dailyProfit.toFixed(2)}).${riskDetail} Close to the limit — bot is very conservative.`,
         type: "danger",
       });
     } else {
       insights.push({
         icon: netPnl >= 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />,
-        text: `P/L hari ini: ${pnlStr} (loss $${data.dailyLoss.toFixed(2)}, profit $${data.dailyProfit.toFixed(2)}).${riskDetail}`,
+        text: `Today's P/L: ${pnlStr} (loss $${data.dailyLoss.toFixed(2)}, profit $${data.dailyProfit.toFixed(2)}).${riskDetail}`,
         type: netPnl >= 0 ? "success" : "warning",
       });
     }
@@ -314,16 +314,16 @@ function generateInsights(data: TradingStatus): Insight[] {
   }
 
   // ═══════════════════════════════════════════
-  // 9. PERFORMA BOT
+  // 9. BOT PERFORMANCE
   // ═══════════════════════════════════════════
   if (data.performance) {
     const p = data.performance;
     const uptimeText = p.uptimeHours < 1
-      ? `${(p.uptimeHours * 60).toFixed(0)} menit`
-      : `${p.uptimeHours.toFixed(1)} jam`;
+      ? `${(p.uptimeHours * 60).toFixed(0)} minutes`
+      : `${p.uptimeHours.toFixed(1)} hours`;
     insights.push({
       icon: <Bot className="h-3.5 w-3.5" />,
-      text: `Bot aktif ${uptimeText}, loop ke-${p.loopCount}. Avg execution: ${p.avgExecutionMs.toFixed(0)}ms. Session trades: ${p.totalSessionTrades} (P/L: ${p.totalSessionProfit >= 0 ? "+" : ""}$${p.totalSessionProfit.toFixed(2)}).`,
+      text: `Bot running for ${uptimeText}, loop #${p.loopCount}. Avg execution: ${p.avgExecutionMs.toFixed(0)}ms. Session trades: ${p.totalSessionTrades} (P/L: ${p.totalSessionProfit >= 0 ? "+" : ""}$${p.totalSessionProfit.toFixed(2)}).`,
       type: "info",
     });
   }
@@ -342,7 +342,7 @@ export function AssistantCard({ data }: AssistantCardProps) {
   useEffect(() => {
     const update = () => {
       setWibTime(
-        new Date().toLocaleString("id-ID", {
+        new Date().toLocaleString("en-GB", {
           timeZone: "Asia/Jakarta",
           hour: "2-digit",
           minute: "2-digit",
@@ -361,7 +361,7 @@ export function AssistantCard({ data }: AssistantCardProps) {
       <CardHeader>
         <CardTitle className="text-sm font-medium flex items-center gap-1.5 uppercase tracking-wider text-blue-400">
           <Bot className="h-4 w-4" />
-          Asisten Bot
+          Bot Assistant
           <span className="ml-auto text-[10px] font-normal normal-case tracking-normal text-muted-foreground/60 font-mono">
             {wibTime} WIB
           </span>
@@ -385,18 +385,8 @@ export function AssistantCard({ data }: AssistantCardProps) {
         {/* Last analysis timestamp */}
         <div className="mt-3 pt-2 border-t border-white/5 text-[10px] text-muted-foreground/40 flex items-center gap-1">
           <Clock className="h-2.5 w-2.5" />
-          Analisis terakhir: {data.timestamp
-            ? new Date(data.timestamp).toLocaleString("id-ID", {
-                timeZone: "Asia/Jakarta",
-                day: "2-digit",
-                month: "short",
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-                hour12: false,
-              })
-            : wibTime
-          } WIB
+          {/* timestamp is already a WIB clock time ("HH:MM:SS"), not a parseable date */}
+          Last analysis: {data.timestamp || wibTime} WIB
         </div>
       </CardContent>
     </Card>

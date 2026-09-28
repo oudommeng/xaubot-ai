@@ -11,15 +11,15 @@ export interface BookEntry {
 }
 
 export const categories = [
-  "Mulai di Sini",
-  "AI & Analisis",
-  "Risiko & Proteksi",
-  "Proses Trading",
-  "Infrastruktur",
-  "Konektor & Konfigurasi",
+  "Getting Started",
+  "AI & Analysis",
+  "Risk & Protection",
+  "Trading Process",
+  "Infrastructure",
+  "Connectors & Config",
   "Engine & Data",
-  "Orkestrator",
-  "Analisis",
+  "Orchestrator",
+  "Analysis",
 ] as const;
 
 export type Category = (typeof categories)[number];
@@ -28,12 +28,12 @@ export const books: BookEntry[] = [
   {
     slug: "readme",
     title: "README",
-    category: "Mulai di Sini",
+    category: "Getting Started",
     icon: "BookOpen",
-    description: "Gambaran proyek, instalasi, dan panduan cepat memulai XAUBot AI",
+    description: "Project overview, installation and quick start for XAUBot AI",
     content: `# XAUBot AI
 
-**Bot trading XAUUSD (Emas) berbasis AI** dengan *XGBoost ML*, *Smart Money Concepts* (SMC), dan deteksi *regime* menggunakan *Hidden Markov Model* untuk *MetaTrader 5*.
+**AI-powered XAUUSD (Gold) trading bot** using *XGBoost ML*, *Smart Money Concepts* (SMC), and *Hidden Markov Model* regime detection for *MetaTrader 5*.
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -41,26 +41,45 @@ export const books: BookEntry[] = [
 
 ---
 
-## Fitur
+## Features
 
-| Fitur | Deskripsi |
-|-------|-----------|
-| **Model *XGBoost ML*** | Model 37-fitur yang memprediksi BUY/SELL/HOLD dengan *confidence* terkalibrasi |
-| ***Smart Money Concepts*** | *Order Block*, *Fair Value Gap*, *Break of Structure*, *Change of Character* |
-| **Deteksi *Regime* HMM** | *Hidden Markov Model* 3-state yang mengklasifikasikan pasar *trending*/*ranging*/*volatile* |
-| **Manajemen Risiko Dinamis** | *Stop Loss* berbasis ATR, *position sizing* dengan *Kelly criterion*, batas kerugian harian |
-| **Kesadaran Sesi** | Dioptimalkan untuk sesi Sydney, London, dan New York |
-| **Pelatihan Ulang Otomatis** | Model secara otomatis dilatih ulang saat kondisi pasar berubah |
-| **Notifikasi Telegram** | Pemberitahuan *trade* secara *real-time* dan ringkasan harian |
-| ***Dashboard* Web** | Antarmuka pemantauan *Next.js* untuk pelacakan *live* |
+| Feature | Description |
+|---------|-------------|
+| **XGBoost ML Model** | 37-feature model predicting BUY/SELL/HOLD with calibrated confidence |
+| **Smart Money Concepts** | Order Blocks, Fair Value Gaps, Break of Structure, Change of Character |
+| **HMM Regime Detection** | 3-state Hidden Markov Model classifying the market as trending/ranging/volatile |
+| **Dynamic Risk Management** | ATR-based Stop Loss, Kelly criterion position sizing, daily loss limit |
+| **Session Awareness** | Optimized for Sydney, London, and New York sessions |
+| **Auto-Retraining** | Models automatically retrain when market conditions change |
+| **Telegram Bot** | Trade alerts, hourly analysis, daily summary, and commands (\`/status\`, \`/news\`, ...) from the \`/\` menu |
+| **News Filter** | No new entries ±1h around NFP / FOMC / CPI; toggle with \`/news on\\|off\` |
+| **Configurable Lot Size** | \`BASE_LOT\` / \`MAX_LOT\` / \`RECOVERY_LOT\` in \`.env\` |
+| **macOS Support** | Runs against MetaTrader 5.app (Wine) through an RPyC bridge |
+| **Web Dashboard** | Next.js monitoring interface for live tracking |
 
-## Arsitektur
+## What's New in This Fork
+
+| Change | Details |
+|--------|---------|
+| **macOS support** | \`MetaTrader5\` runs under the Windows Python inside MetaTrader 5.app's Wine prefix; the bot reaches it over RPyC (\`./start_mt5_server.sh\`, \`MT5_HOST=127.0.0.1\`) |
+| **News filter re-enabled** | Blocks new entries ±1h around NFP, FOMC and CPI (WIB). Open positions are still managed. Fixed a bug that always reported SAFE, and corrected the 2025–2026 FOMC dates |
+| **Telegram \`/news\`** | Status (SAFE / BLOCKED / OFF), upcoming news block windows, \`/news on\` / \`/news off\` toggle, alerts when a block starts and ends |
+| **Telegram \`/\` menu** | All commands registered with Telegram, so typing \`/\` shows a tap-to-run list |
+| **Lot size in \`.env\`** | \`BASE_LOT\`, \`MAX_LOT\`, \`RECOVERY_LOT\` (validated at startup) instead of hardcoded 0.01 / 0.02 |
+| **Training fix** | Walk-forward validation no longer overwrites the trained model with its last 500-bar fold |
+| **English everywhere** | All log messages, Telegram texts and code comments translated from Indonesian |
+| **Docker DB hardening** | PostgreSQL port bound to \`127.0.0.1\` only |
+| **Run guide** | Step-by-step setup in [docs/RUNNING.md](docs/RUNNING.md) |
+
+See [CHANGELOG.md](CHANGELOG.md) for details.
+
+## Architecture
 
 \`\`\`mermaid
 graph TD
     MT5["MetaTrader 5<br/>(XAUUSD M15)"] -->|OHLCV| DP["Data Pipeline<br/>(Polars Engine)"]
     DP --> SMC["SMC Analyzer<br/>(OB / FVG / BOS)"]
-    DP --> FE["Feature Engineering<br/>(37 fitur)"]
+    DP --> FE["Feature Engineering<br/>(37 features)"]
     DP --> HMM["HMM Regime<br/>Detector"]
     SMC --> XGB["XGBoost Model<br/>(Signal + Confidence)"]
     FE --> XGB
@@ -73,120 +92,122 @@ graph TD
     PM --> TE
 \`\`\`
 
-## Struktur Proyek
+## Project Structure
 
 \`\`\`
 xaubot-ai/
-├── main_live.py              # Orkestrator trading async utama
-├── train_models.py           # Skrip pelatihan model
-├── src/                      # Modul inti
-│   ├── config.py             #   Konfigurasi trading & mode kapital
-│   ├── mt5_connector.py      #   Layer koneksi MetaTrader 5
-│   ├── smc_polars.py         #   Penganalisis Smart Money Concepts
-│   ├── ml_model.py           #   Model trading XGBoost
-│   ├── feature_eng.py        #   Feature engineering (37 fitur)
-│   ├── regime_detector.py    #   Deteksi regime pasar HMM
-│   ├── risk_engine.py        #   Kalkulasi & validasi risiko
-│   ├── smart_risk_manager.py #   Manajemen risiko dinamis
-│   ├── session_filter.py     #   Filter sesi (Sydney/London/NY)
-│   ├── position_manager.py   #   Manajemen posisi terbuka
-│   ├── dynamic_confidence.py #   Threshold confidence adaptif
-│   ├── auto_trainer.py       #   Pipeline pelatihan ulang otomatis
-│   ├── news_agent.py         #   Filter berita ekonomi
-│   ├── telegram_notifier.py  #   Notifikasi Telegram
-│   ├── trade_logger.py       #   Pencatatan trade ke DB
-│   └── utils.py              #   Fungsi utilitas
+├── main_live.py              # Main async trading orchestrator
+├── train_models.py           # Model training script
+├── src/                      # Core modules
+│   ├── config.py             #   Trading configuration & capital modes
+│   ├── mt5_connector.py      #   MetaTrader 5 connection layer
+│   ├── smc_polars.py         #   Smart Money Concepts analyzer
+│   ├── ml_model.py           #   XGBoost trading model
+│   ├── feature_eng.py        #   Feature engineering (37 features)
+│   ├── regime_detector.py    #   HMM market regime detection
+│   ├── risk_engine.py        #   Risk calculations & validation
+│   ├── smart_risk_manager.py #   Dynamic risk management
+│   ├── session_filter.py     #   Session filter (Sydney/London/NY)
+│   ├── position_manager.py   #   Open position management
+│   ├── dynamic_confidence.py #   Adaptive confidence thresholds
+│   ├── auto_trainer.py       #   Auto-retraining pipeline
+│   ├── news_agent.py         #   Economic news filter
+│   ├── telegram_notifier.py  #   Telegram notifications
+│   ├── trade_logger.py       #   Trade logging to DB
+│   └── utils.py              #   Utility functions
 ├── backtests/                # Backtesting
-│   ├── backtest_live_sync.py #   Backtest utama (sinkron dengan live)
-│   └── archive/              #   Versi historis
-├── scripts/                  # Skrip utilitas
-│   ├── check_market.py       #   Analisis cepat pasar SMC
-│   ├── check_positions.py    #   Lihat posisi terbuka
-│   ├── check_status.py       #   Cek status akun
-│   ├── close_positions.py    #   Tutup semua posisi darurat
-│   ├── modify_tp.py          #   Modifikasi level take-profit
-│   └── get_trade_history.py  #   Tarik riwayat trade
-├── tests/                    # Pengujian
-├── models/                   # Model terlatih (.pkl)
-├── data/                     # Data pasar & catatan trade
-├── docs/                     # Dokumentasi
-│   ├── arsitektur-ai/        #   Dokumen arsitektur (23 komponen)
-│   └── research/             #   Riset & analisis
-├── web-dashboard/            # Dashboard pemantauan Next.js
-├── docker/                   # Konfigurasi & skrip Docker
-│   ├── scripts/              #   Skrip pembantu (.bat/.sh)
-│   └── docs/                 #   Dokumentasi Docker
-└── archive/                  # File usang (gitignored)
+│   ├── backtest_live_sync.py #   Main backtest (synced with live)
+│   └── archive/              #   Historical versions
+├── scripts/                  # Utility scripts
+│   ├── check_market.py       #   Quick SMC market analysis
+│   ├── check_positions.py    #   View open positions
+│   ├── check_status.py       #   Account status check
+│   ├── close_positions.py    #   Emergency close all positions
+│   ├── modify_tp.py          #   Modify take-profit levels
+│   └── get_trade_history.py  #   Pull trade history
+├── tests/                    # Tests
+├── models/                   # Trained models (.pkl)
+├── data/                     # Market data & trade logs
+├── docs/                     # Documentation
+│   ├── arsitektur-ai/        #   Architecture docs (23 components)
+│   └── research/             #   Research & analysis
+├── web-dashboard/            # Next.js monitoring dashboard
+├── docker/                   # Docker configuration & scripts
+│   ├── scripts/              #   Helper scripts (.bat/.sh)
+│   └── docs/                 #   Docker documentation
+└── archive/                  # Deprecated files (gitignored)
 \`\`\`
 
-## Hasil *Backtest* (Jan 2025 - Feb 2026)
+## Backtest Results (Jan 2025 - Feb 2026)
 
-| Metrik | Nilai |
+| Metric | Value |
 |--------|-------|
-| Total *Trade* | 654 |
-| *Win Rate* | 63.9% |
-| *Net P/L* | $4,189.52 |
-| *Profit Factor* | 2.64 |
-| *Max Drawdown* | 2.2% |
-| *Sharpe Ratio* | 4.83 |
+| Total Trades | 654 |
+| Win Rate | 63.9% |
+| Net P/L | $4,189.52 |
+| Profit Factor | 2.64 |
+| Max Drawdown | 2.2% |
+| Sharpe Ratio | 4.83 |
 
-## Instalasi
+## Installation
 
-### Deployment *Docker* (Direkomendasikan)
+### Docker Deployment (Recommended)
 
-**Mulai Cepat:**
+**Quick Start:**
 
 \`\`\`bash
-# 1. Clone repositori
+# 1. Clone the repository
 git clone https://github.com/GifariKemal/xaubot-ai.git
 cd xaubot-ai
 
-# 2. Konfigurasi environment
+# 2. Configure environment
 cp docker/.env.docker.example .env
-# Edit .env dengan kredensial MT5 Anda
+# Edit .env with your MT5 credentials
 
-# 3. Jalankan semua layanan (Windows)
+# 3. Start all services (Windows)
 docker\\scripts\\docker-start.bat
 
-# 3. Jalankan semua layanan (Linux/Mac)
+# 3. Start all services (Linux/Mac)
 ./docker/scripts/docker-start.sh
 \`\`\`
 
-**Layanan yang tersedia:**
-- *Dashboard*: http://localhost:3000
+**Available services:**
+- Dashboard: http://localhost:3000 (change with \`DASHBOARD_PORT\` in \`.env\` if 3000 is taken)
 - API: http://localhost:8000
-- Dokumentasi API: http://localhost:8000/docs
-- *Database*: localhost:5432
+- API docs: http://localhost:8000/docs
+- Database: localhost:5432
 
-**Dokumentasi *Docker* lengkap:** Lihat [docker/docs/DOCKER.md](docker/docs/DOCKER.md)
+All ports listen on \`127.0.0.1\` only (the API has no login). The API only accepts browser requests from the dashboard (\`CORS_ORIGINS\`).
+
+**Full Docker documentation:** See [docker/docs/DOCKER.md](docker/docs/DOCKER.md)
 
 ---
 
-### Instalasi Manual
+### Manual Installation
 
-**Prasyarat:**
+**Prerequisites:**
 - Python 3.11+
-- Terminal *MetaTrader 5* (Windows)
-- PostgreSQL (opsional, untuk pencatatan *trade*)
+- MetaTrader 5 terminal (Windows, or MetaTrader 5.app on macOS, see [docs/RUNNING.md](docs/RUNNING.md))
+- PostgreSQL (optional, for trade logging)
 
-**Persiapan:**
+**Setup:**
 
 \`\`\`bash
-# Clone repositori
+# Clone the repository
 git clone https://github.com/GifariKemal/xaubot-ai.git
 cd xaubot-ai
 
-# Instal dependensi
+# Install dependencies
 pip install -r requirements.txt
 
-# Konfigurasi environment
+# Configure environment
 cp .env.example .env
-# Edit .env dengan kredensial MT5 dan token Telegram Anda
+# Edit .env with your MT5 credentials and Telegram token
 \`\`\`
 
-### Konfigurasi
+### Configuration
 
-Pengaturan utama di \`.env\`:
+Key settings in \`.env\`:
 
 \`\`\`env
 # MetaTrader 5
@@ -195,69 +216,98 @@ MT5_PASSWORD=your_password
 MT5_SERVER=your_server
 MT5_PATH=C:/Program Files/MetaTrader 5/terminal64.exe
 
-# Notifikasi Telegram
+# Telegram Notifications
 TELEGRAM_BOT_TOKEN=your_bot_token
 TELEGRAM_CHAT_ID=your_chat_id
 
+# macOS only: MT5 bridge (leave empty on Windows)
+MT5_HOST=127.0.0.1
+MT5_PORT=18813
+
 # Trading
-CAPITAL=5000
-SYMBOL=XAUUSD
+CAPITAL=5000          # set to your real account balance
+SYMBOL=XAUUSD         # exact broker symbol, e.g. XAUUSDm (Exness)
+
+# Lot size per trade (chosen by ML confidence)
+BASE_LOT=0.01         # ML 55-65%
+MAX_LOT=0.02          # ML >= 65%
+RECOVERY_LOT=0.01     # ML < 55%, after losses, or high volatility
 \`\`\`
 
-### Menjalankan
+### Telegram Commands
+
+| Command | Description |
+|---------|-------------|
+| \`/status\` | Bot status & account overview |
+| \`/market\` | Market analysis & signals |
+| \`/positions\` | Open positions |
+| \`/daily\` | Today's trading summary |
+| \`/risk\` | Risk state & settings |
+| \`/filters\` | Entry filter status |
+| \`/news\` | News filter status & upcoming NFP / FOMC / CPI blocks |
+| \`/news on\` / \`/news off\` | Block / allow new entries during news |
+| \`/help\` | All commands |
+
+### Running
+
+**Full step-by-step guide (demo account, macOS bridge, Telegram):** [docs/RUNNING.md](docs/RUNNING.md)
 
 \`\`\`bash
-# Latih model terlebih dahulu
+# Train models first
 python train_models.py
 
-# Jalankan bot
+# macOS only: start the MT5 bridge first (separate terminal)
+./start_mt5_server.sh
+
+# Run the bot
 python main_live.py
 
-# Jalankan backtest
+# Run backtest
 python backtests/backtest_live_sync.py --tune
 \`\`\`
 
-## Manajemen Risiko
+## Risk Management
 
-| Proteksi | Detail |
-|----------|--------|
-| ***Stop Loss* Berbasis ATR** | Jarak minimum 1.5x ATR |
-| ***Stop Loss* Level Broker** | *Stop Loss* darurat diatur di level broker |
-| ***Position Sizing*** | *Kelly criterion* dengan penyesuaian mode kapital |
-| **Batas Kerugian Harian** | 5% dari kapital per hari |
-| **Batas Kerugian Total** | 10% dari kapital |
-| **Batas Posisi** | Maksimal 2 posisi bersamaan |
-| ***Exit* Berbasis Waktu** | Maksimal 6 jam per *trade* |
-| **Filter Sesi** | Hanya membuka *trade* saat sesi aktif |
-| **Filter *Spread*** | Menolak *trade* saat *spread* tinggi |
-| ***Cooldown*** | Waktu minimum antar *trade* |
+| Protection | Details |
+|------------|---------|
+| **ATR-Based Stop Loss** | Minimum distance of 1.5x ATR |
+| **Broker-Level Stop Loss** | Emergency Stop Loss set at broker level |
+| **Position Sizing** | Kelly criterion with capital mode adjustment |
+| **Daily Loss Limit** | 5% of capital per day |
+| **Total Loss Limit** | 10% of capital |
+| **Position Limit** | Maximum 2 concurrent positions |
+| **Time-Based Exit** | Maximum 6 hours per trade |
+| **Session Filter** | Only opens trades during active sessions (Mon–Fri 06:00–23:59 WIB) |
+| **News Filter** | No new entries ±1h around NFP / FOMC / CPI |
+| **Spread Filter** | Rejects trades when spread is high |
+| **Cooldown** | Minimum time between trades |
 
-## Teknologi
+## Tech Stack
 
-- **Polars** — Mesin pemrosesan data performa tinggi (bukan Pandas)
-- ***XGBoost*** — Model *machine learning* berbasis *gradient boosting*
-- **hmmlearn** — *Hidden Markov Model* untuk deteksi *regime* pasar
-- ***MetaTrader5*** — API koneksi broker
-- **asyncio** — *Event loop* asinkron untuk eksekusi latensi rendah
-- **loguru** — *Logging* terstruktur
-- **PostgreSQL** — *Database* pencatatan *trade*
-- ***Next.js*** — *Dashboard* web
+- **Polars** — High-performance data processing engine (not Pandas)
+- **XGBoost** — Gradient boosting machine learning model
+- **hmmlearn** — Hidden Markov Model for market regime detection
+- **MetaTrader5** — Broker connection API
+- **asyncio** — Async event loop for low-latency execution
+- **loguru** — Structured logging
+- **PostgreSQL** — Trade logging database
+- **Next.js** — Web dashboard
 
-## Peringatan
+## Disclaimer
 
-> Perangkat lunak ini dibuat **hanya untuk tujuan edukasi dan riset**. Trading valuta asing (Forex) dan komoditas dengan margin memiliki tingkat risiko yang tinggi dan mungkin tidak cocok untuk semua investor. Kinerja masa lalu bukan indikasi hasil di masa depan. Anda dapat kehilangan sebagian atau seluruh investasi Anda. **Gunakan dengan risiko Anda sendiri.**
+> This software is provided **for educational and research purposes only**. Trading foreign exchange (Forex) and commodities on margin carries a high level of risk and may not be suitable for all investors. Past performance is not indicative of future results. You may lose some or all of your investment. **Use at your own risk.**
 
-## Lisensi
+## License
 
-[MIT License](LICENSE) - Hak Cipta (c) 2025-2026 Gifari Kemal
+[MIT License](LICENSE) - Copyright (c) 2025-2026 Gifari Kemal
 `,
   },
   {
     slug: "features",
-    title: "Fitur & Komponen",
-    category: "Mulai di Sini",
+    title: "Features & Components",
+    category: "Getting Started",
     icon: "Sparkles",
-    description: "Daftar lengkap fitur — 14 filter entry, 12 kondisi exit, manajemen risiko",
+    description: "Full feature list — 14 entry filters, 12 exit conditions, risk management",
     content: `# XAUBot AI — Referensi Fitur
 
 ## Gambaran Umum
@@ -583,10 +633,10 @@ flowchart TD
   },
   {
     slug: "architecture-full",
-    title: "Arsitektur Lengkap",
-    category: "Mulai di Sini",
+    title: "Full Architecture",
+    category: "Getting Started",
     icon: "LayoutDashboard",
-    description: "Arsitektur menyeluruh sistem — alur data, komponen, dan interaksi antar modul",
+    description: "Complete system architecture — data flow, components and module interactions",
     content: `# Arsitektur Lengkap — Smart AI Trading Bot
 
 > **Dokumen:** Arsitektur keseluruhan sistem dalam 1 file
@@ -1631,10 +1681,10 @@ TARGET: Trading XAUUSD M15 yang KONSISTEN dan AMAN
   },
   {
     slug: "architecture-index",
-    title: "Indeks Arsitektur",
-    category: "Mulai di Sini",
+    title: "Architecture Index",
+    category: "Getting Started",
     icon: "List",
-    description: "Daftar semua dokumen arsitektur dan status komponen terkini",
+    description: "List of all architecture documents and current component status",
     content: `# Dokumentasi Arsitektur — XAUBot AI
 
 > Panduan lengkap arsitektur dan komponen sistem *trading bot* otomatis XAUUSD.
@@ -1710,9 +1760,9 @@ graph TD
   {
     slug: "hmm-regime",
     title: "HMM Regime Detector",
-    category: "AI & Analisis",
+    category: "AI & Analysis",
     icon: "Brain",
-    description: "Deteksi kondisi pasar menggunakan Hidden Markov Model 3 state",
+    description: "Market condition detection with a 3-state Hidden Markov Model",
     content: `# HMM (*Hidden Markov Model*) — *Regime Detector*
 
 > **File:** \`src/regime_detector.py\`
@@ -1853,9 +1903,9 @@ Dari \`src/config.py\` → \`RegimeConfig\`:
   {
     slug: "xgboost",
     title: "XGBoost Signal Predictor",
-    category: "AI & Analisis",
+    category: "AI & Analysis",
     icon: "Cpu",
-    description: "Model machine learning untuk prediksi sinyal BUY/SELL/HOLD",
+    description: "Machine learning model for BUY/SELL/HOLD signal prediction",
     content: `# XGBoost — *Signal Predictor*
 
 > **File:** \`src/ml_model.py\`
@@ -1994,9 +2044,9 @@ Model otomatis di-*retrain* oleh \`AutoTrainer\` setiap **7 hari** atau saat:
   {
     slug: "smc",
     title: "SMC Analyzer",
-    category: "AI & Analisis",
+    category: "AI & Analysis",
     icon: "TrendingUp",
-    description: "Analisis Smart Money Concepts — Order Block, FVG, BOS, CHoCH",
+    description: "Smart Money Concepts analysis — Order Block, FVG, BOS, CHoCH",
     content: `# SMC Analyzer (*Smart Money Concepts*)
 
 > **File:** \`src/smc_polars.py\`
@@ -2510,9 +2560,9 @@ flowchart TD
   {
     slug: "feature-eng",
     title: "Feature Engineering",
-    category: "AI & Analisis",
+    category: "AI & Analysis",
     icon: "Layers",
-    description: "37 fitur teknikal — RSI, ATR, MACD, Bollinger, dan lainnya",
+    description: "37 technical features — RSI, ATR, MACD, Bollinger and more",
     content: `# *Feature Engineering*
 
 > **File:** \`src/feature_eng.py\`
@@ -2867,10 +2917,10 @@ Semua indikator teknikal, *returns*, *volatility*, *trend*, *time features*, SMC
   },
   {
     slug: "risk-management",
-    title: "Manajemen Risiko",
-    category: "Risiko & Proteksi",
+    title: "Risk Management",
+    category: "Risk & Protection",
     icon: "Shield",
-    description: "Sistem manajemen risiko dinamis dengan mode kapital dan batas harian",
+    description: "Dynamic risk management with capital modes and daily limits",
     content: `# Manajemen Risiko — *Smart Risk Manager*
 
 > **File utama:** \`src/smart_risk_manager.py\`
@@ -3037,10 +3087,10 @@ Setiap posisi yang terbuka memiliki *guard* sendiri yang melacak:
   },
   {
     slug: "session-filter",
-    title: "Filter Sesi",
-    category: "Risiko & Proteksi",
+    title: "Session Filter",
+    category: "Risk & Protection",
     icon: "Clock",
-    description: "Filter sesi perdagangan — Sydney, London, New York dalam zona waktu WIB",
+    description: "Trading session filter — Sydney, London, New York in WIB time",
     content: `# *Session Filter* — Filter Sesi Perdagangan
 
 > **File:** \`src/session_filter.py\`
@@ -3184,9 +3234,9 @@ Bot juga memiliki daftar waktu berita ekonomi penting:
   {
     slug: "stop-loss",
     title: "Stop Loss",
-    category: "Risiko & Proteksi",
+    category: "Risk & Protection",
     icon: "ShieldAlert",
-    description: "Proteksi SL berbasis ATR dan broker-level untuk keamanan maksimal",
+    description: "ATR-based and broker-level SL protection for maximum safety",
     content: `# *Stop Loss* (S/L) — Sistem Proteksi Berlapis
 
 > **File terkait:** \`src/smc_polars.py\`, \`main_live.py\`, \`src/smart_risk_manager.py\`
@@ -3479,9 +3529,9 @@ Entry BUY @ $4950, sl=0 (broker reject)
   {
     slug: "take-profit",
     title: "Take Profit",
-    category: "Risiko & Proteksi",
+    category: "Risk & Protection",
     icon: "Target",
-    description: "Target TP multi-level dengan perhitungan ATR dan struktur pasar",
+    description: "Multi-level TP targets from ATR and market structure",
     content: `# *Take Profit* (T/P) — Sistem Pengambilan Profit Cerdas
 
 > **File terkait:** \`src/smc_polars.py\`, \`main_live.py\`, \`src/smart_risk_manager.py\`
@@ -3809,9 +3859,9 @@ Entry BUY @ $4950
   {
     slug: "entry-trade",
     title: "Entry Trade",
-    category: "Proses Trading",
+    category: "Trading Process",
     icon: "ArrowRightCircle",
-    description: "14 filter entry dan logika eksekusi perdagangan — dari sinyal hingga order",
+    description: "14 entry filters and trade execution logic — from signal to order",
     content: `# *Entry Trade* — Proses Masuk Posisi
 
 > **File utama:** \`main_live.py\`
@@ -4127,9 +4177,9 @@ Dalam kondisi normal, dari ratusan *loop* per jam:
   {
     slug: "exit-trade",
     title: "Exit Trade",
-    category: "Proses Trading",
+    category: "Trading Process",
     icon: "ArrowLeftCircle",
-    description: "12 kondisi exit termasuk trailing SL, batas waktu, dan perubahan regime",
+    description: "12 exit conditions including trailing SL, time limit and regime change",
     content: `# *Exit Trade* — Proses Keluar Posisi
 
 > **File utama:** \`main_live.py\`, \`src/smart_risk_manager.py\`
@@ -4346,9 +4396,9 @@ Berdasarkan data *backtest* (Jan 2025 - Feb 2026):
   {
     slug: "news-agent",
     title: "News Agent",
-    category: "Infrastruktur",
+    category: "Infrastructure",
     icon: "Newspaper",
-    description: "Filter berita ekonomi dan penilaian dampak — saat ini nonaktif",
+    description: "Economic news filter — blocks entries around NFP / FOMC / CPI",
     content: `# *News Agent* — Monitoring Berita Ekonomi
 
 > **File:** \`src/news_agent.py\`
@@ -4426,10 +4476,10 @@ Langkah-langkah untuk mengaktifkan kembali *News Agent*:
   },
   {
     slug: "telegram",
-    title: "Notifikasi Telegram",
-    category: "Infrastruktur",
+    title: "Telegram Notifications",
+    category: "Infrastructure",
     icon: "Send",
-    description: "Notifikasi trade real-time dan ringkasan harian via Telegram Bot",
+    description: "Real-time trade alerts and daily summaries via Telegram bot",
     content: `# *Telegram Notifications* — Sistem Notifikasi *Real-Time*
 
 > **File:** \`src/telegram_notifier.py\`
@@ -4899,9 +4949,9 @@ Tree structure menggunakan *box-drawing characters*:
   {
     slug: "auto-trainer",
     title: "Auto Trainer",
-    category: "Infrastruktur",
+    category: "Infrastructure",
     icon: "RefreshCw",
-    description: "Pipeline retraining otomatis saat kondisi pasar berubah signifikan",
+    description: "Automatic retraining pipeline when market conditions change",
     content: `# *Auto Trainer* --- Sistem *Retraining* Otomatis
 
 > **File:** \`src/auto_trainer.py\`
@@ -5280,9 +5330,9 @@ if candle_count % 20 == 0:  # Setiap 20 candle baru
   {
     slug: "backtest",
     title: "Backtest",
-    category: "Infrastruktur",
+    category: "Infrastructure",
     icon: "BarChart3",
-    description: "Framework backtesting yang disinkronkan dengan logika live trading",
+    description: "Backtesting framework synced with the live trading logic",
     content: `# Backtest — Engine Simulasi Live-Sync
 
 > **File:** \`backtests/backtest_live_sync.py\`
@@ -5643,9 +5693,9 @@ flowchart TD
   {
     slug: "dynamic-confidence",
     title: "Dynamic Confidence",
-    category: "Infrastruktur",
+    category: "Infrastructure",
     icon: "Gauge",
-    description: "Ambang batas confidence adaptif berdasarkan kondisi dan performa pasar",
+    description: "Adaptive confidence threshold based on market conditions and performance",
     content: `# *Dynamic Confidence* --- Penyesuaian *Threshold* Otomatis
 
 > **File:** \`src/dynamic_confidence.py\`
@@ -5998,9 +6048,9 @@ ML Confidence >= Threshold?
   {
     slug: "train-models",
     title: "Train Models",
-    category: "Infrastruktur",
+    category: "Infrastructure",
     icon: "GraduationCap",
-    description: "Pipeline pelatihan model dan optimasi hyperparameter XGBoost",
+    description: "Model training pipeline and XGBoost hyperparameter tuning",
     content: `# Train Models — Script Training Awal
 
 > **File:** \`train_models.py\`
@@ -6193,10 +6243,10 @@ logs/
   },
   {
     slug: "mt5-connector",
-    title: "Konektor MT5",
-    category: "Konektor & Konfigurasi",
+    title: "MT5 Connector",
+    category: "Connectors & Config",
     icon: "Plug",
-    description: "Lapisan koneksi MetaTrader 5 dan eksekusi order trading",
+    description: "MetaTrader 5 connection layer and order execution",
     content: `# *MT5 Connector* — Jembatan ke *MetaTrader* 5
 
 > **File:** \`src/mt5_connector.py\`
@@ -6502,10 +6552,10 @@ with MT5Connector(login, password, server) as mt5_conn:
   },
   {
     slug: "configuration",
-    title: "Konfigurasi",
-    category: "Konektor & Konfigurasi",
+    title: "Configuration",
+    category: "Connectors & Config",
     icon: "Settings",
-    description: "Pengaturan trading, mode kapital, dan konfigurasi environment",
+    description: "Trading settings, capital modes and environment configuration",
     content: `# Konfigurasi — Pusat Pengaturan Bot
 
 > **File:** \`src/config.py\`
@@ -6671,9 +6721,9 @@ Bot **tidak bisa berjalan** tanpa kredensial MT5 yang valid.
   {
     slug: "trade-logger",
     title: "Trade Logger",
-    category: "Konektor & Konfigurasi",
+    category: "Connectors & Config",
     icon: "FileText",
-    description: "Pencatatan trade ke database PostgreSQL untuk analisis historis",
+    description: "Trade logging to PostgreSQL for historical analysis",
     content: `# Trade Logger — Pencatat Trade Otomatis
 
 > **File:** \`src/trade_logger.py\`
@@ -6848,9 +6898,9 @@ data/trade_logs/
   {
     slug: "position-manager",
     title: "Position Manager",
-    category: "Konektor & Konfigurasi",
+    category: "Connectors & Config",
     icon: "ListChecks",
-    description: "Pelacakan dan manajemen posisi terbuka secara real-time",
+    description: "Real-time tracking and management of open positions",
     content: `# Position Manager — Manajemen Posisi Cerdas
 
 > **File:** \`src/position_manager.py\`
@@ -7129,7 +7179,7 @@ SmartPositionManager(
     title: "Risk Engine",
     category: "Engine & Data",
     icon: "Calculator",
-    description: "Perhitungan risiko, Kelly criterion, dan position sizing otomatis",
+    description: "Risk calculation, Kelly criterion and automatic position sizing",
     content: `# Risk Engine — Mesin Risiko & Circuit Breaker
 
 > **File:** \`src/risk_engine.py\`
@@ -7313,7 +7363,7 @@ SmartRiskManager (05-Risk-Management.md)
     title: "Database",
     category: "Engine & Data",
     icon: "Database",
-    description: "Skema PostgreSQL dan penyimpanan data perdagangan",
+    description: "PostgreSQL schema and trade data storage",
     content: `# *Database Module* — *PostgreSQL* Integration
 
 > **File:** \`src/db/connection.py\`, \`src/db/repository.py\`
@@ -7720,10 +7770,10 @@ Bot TIDAK pernah crash karena database.
   },
   {
     slug: "main-live",
-    title: "Orkestrator Utama",
-    category: "Orkestrator",
+    title: "Main Orchestrator",
+    category: "Orchestrator",
     icon: "Play",
-    description: "Async main loop — inti dari trading bot yang mengkoordinasi semua komponen",
+    description: "Async main loop — the core of the bot that coordinates all components",
     content: `# Main Live — *Orchestrator* Utama
 
 > **File:** \`main_live.py\`
@@ -8060,10 +8110,10 @@ flowchart TD
   },
   {
     slug: "weakness-analysis",
-    title: "Analisis Kelemahan",
-    category: "Analisis",
+    title: "Weakness Analysis",
+    category: "Analysis",
     icon: "AlertTriangle",
-    description: "Kelemahan yang diketahui, risiko, dan prioritas perbaikan sistem",
+    description: "Known weaknesses, risks and improvement priorities",
     content: `# Analisis Kelemahan Sistem — *Weakness Analysis*
 
 ## Tanggal Analisis Awal: 6 Februari 2026
