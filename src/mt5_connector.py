@@ -14,11 +14,9 @@ from datetime import datetime
 import time
 from loguru import logger
 
-try:
-    import MetaTrader5 as mt5
-except ImportError:
-    logger.warning("MetaTrader5 not installed. Running in simulation mode.")
-    mt5 = None
+from .mt5_bridge import load_mt5
+
+mt5 = load_mt5()
 
 
 @dataclass

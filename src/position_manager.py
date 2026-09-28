@@ -17,10 +17,9 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from loguru import logger
 
-try:
-    import MetaTrader5 as mt5
-except ImportError:
-    mt5 = None
+from .mt5_bridge import load_mt5
+
+mt5 = load_mt5()
 
 # Timezone constants
 WIB = ZoneInfo("Asia/Jakarta")  # GMT+7
