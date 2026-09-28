@@ -8,12 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Lot sizes configurable in `.env`: `BASE_LOT`, `MAX_LOT`, `RECOVERY_LOT` (defaults 0.01 / 0.02 / 0.01)
+- Telegram `/news` (alias `/n`): news filter status + upcoming NFP / FOMC / CPI block windows
+- Telegram `/news on|off`: toggle the news filter, saved to `data/filter_config.json`
+- Telegram alert when a news block starts and ends
+- Telegram "/" command menu registered on startup (`setMyCommands`)
+- Telegram commands can take arguments (`handler._takes_args = True`)
 - macOS support: MT5 over Wine via RPyC bridge (`src/mt5_bridge.py`, `mt5_server.py`, `start_mt5_server.sh`)
 - `docs/RUNNING.md` — step-by-step run guide (demo account, macOS bridge, Telegram)
 - News filter re-enabled: no new entries ±1h around NFP / FOMC / CPI (open positions still managed).
   Toggle `news_filter` in `data/filter_config.json`; Telegram shows SAFE / BLOCKED / OFF
 
+### Changed
+- All Indonesian log messages, Telegram texts, comments and docstrings in `main_live.py` and `src/` translated to English
+  (e.g. `Zona bahaya: Likuiditas rendah, spread tinggi` → `Danger zone: Low liquidity, high spread`)
+
 ### Fixed
+- `docker-compose.yml`: PostgreSQL port bound to 127.0.0.1 only (default password is public)
 - `train_models.py`: walk-forward validation overwrote `models/xgboost_model.pkl` with its last
   ~500-bar fold; the full-data model is now kept
 - News agent always reported SAFE when `copy_ticks_from("XAUUSD")` failed (symbol differs per broker)

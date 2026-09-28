@@ -68,6 +68,11 @@ MT5_PORT=18813
 SYMBOL=XAUUSDm        # exact symbol name from your broker's Market Watch
 CAPITAL=1500          # set to your REAL account balance
 
+# Lot size per trade (chosen by ML confidence, see .env.example)
+BASE_LOT=0.01
+MAX_LOT=0.02
+RECOVERY_LOT=0.01
+
 # Telegram (optional, see step 7)
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
@@ -187,7 +192,7 @@ are set in `.env`.
 Keep the token secret: whoever has it controls the bot. The bot only answers messages from
 `TELEGRAM_CHAT_ID`.
 
-**Commands:**
+**Commands** (type `/` in the chat to pick from the menu):
 
 | Command | Shows |
 |---|---|
@@ -196,10 +201,13 @@ Keep the token secret: whoever has it controls the bot. The bot only answers mes
 | `/risk` | Risk settings and daily loss usage |
 | `/positions` (`/pos`) | Open positions |
 | `/daily` | Today's P/L summary |
-| `/filters` | Entry filter states, incl. News Filter (toggle in `data/filter_config.json`) |
+| `/filters` | Entry filter states |
+| `/news` | News filter status and upcoming NFP / FOMC / CPI block windows (WIB) |
+| `/news off` / `/news on` | Allow / block new entries during news (saved, survives restart) |
 | `/help` | Command list |
 
-You also get alerts on trade open/close, an hourly market analysis and a daily summary.
+You also get alerts on trade open/close, when a news block starts and ends, an hourly market
+analysis and a daily summary.
 
 ## 8. Monitor & stop
 

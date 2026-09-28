@@ -18,8 +18,27 @@
 | **Dynamic Risk Management** | ATR-based Stop Loss, Kelly criterion position sizing, daily loss limit |
 | **Session Awareness** | Optimized for Sydney, London, and New York sessions |
 | **Auto-Retraining** | Models automatically retrain when market conditions change |
-| **Telegram Notifications** | Real-time trade alerts and daily summaries |
+| **Telegram Bot** | Trade alerts, hourly analysis, daily summary, and commands (`/status`, `/news`, ...) from the `/` menu |
+| **News Filter** | No new entries ±1h around NFP / FOMC / CPI; toggle with `/news on\|off` |
+| **Configurable Lot Size** | `BASE_LOT` / `MAX_LOT` / `RECOVERY_LOT` in `.env` |
+| **macOS Support** | Runs against MetaTrader 5.app (Wine) through an RPyC bridge |
 | **Web Dashboard** | Next.js monitoring interface for live tracking |
+
+## What's New in This Fork
+
+| Change | Details |
+|--------|---------|
+| **macOS support** | `MetaTrader5` runs under the Windows Python inside MetaTrader 5.app's Wine prefix; the bot reaches it over RPyC (`./start_mt5_server.sh`, `MT5_HOST=127.0.0.1`) |
+| **News filter re-enabled** | Blocks new entries ±1h around NFP, FOMC and CPI (WIB). Open positions are still managed. Fixed a bug that always reported SAFE, and corrected the 2025–2026 FOMC dates |
+| **Telegram `/news`** | Status (SAFE / BLOCKED / OFF), upcoming news block windows, `/news on` / `/news off` toggle, alerts when a block starts and ends |
+| **Telegram `/` menu** | All commands registered with Telegram, so typing `/` shows a tap-to-run list |
+| **Lot size in `.env`** | `BASE_LOT`, `MAX_LOT`, `RECOVERY_LOT` (validated at startup) instead of hardcoded 0.01 / 0.02 |
+| **Training fix** | Walk-forward validation no longer overwrites the trained model with its last 500-bar fold |
+| **English everywhere** | All log messages, Telegram texts and code comments translated from Indonesian |
+| **Docker DB hardening** | PostgreSQL port bound to `127.0.0.1` only |
+| **Run guide** | Step-by-step setup in [docs/RUNNING.md](docs/RUNNING.md) |
+
+See [CHANGELOG.md](CHANGELOG.md) for details.
 
 ## Architecture
 
@@ -133,7 +152,7 @@ docker\scripts\docker-start.bat
 
 **Prerequisites:**
 - Python 3.11+
-- MetaTrader 5 terminal (Windows)
+- MetaTrader 5 terminal (Windows, or MetaTrader 5.app on macOS, see [docs/RUNNING.md](docs/RUNNING.md))
 - PostgreSQL (optional, for trade logging)
 
 **Setup:**
@@ -166,10 +185,33 @@ MT5_PATH=C:/Program Files/MetaTrader 5/terminal64.exe
 TELEGRAM_BOT_TOKEN=your_bot_token
 TELEGRAM_CHAT_ID=your_chat_id
 
+# macOS only: MT5 bridge (leave empty on Windows)
+MT5_HOST=127.0.0.1
+MT5_PORT=18813
+
 # Trading
-CAPITAL=5000
-SYMBOL=XAUUSD
+CAPITAL=5000          # set to your real account balance
+SYMBOL=XAUUSD         # exact broker symbol, e.g. XAUUSDm (Exness)
+
+# Lot size per trade (chosen by ML confidence)
+BASE_LOT=0.01         # ML 55-65%
+MAX_LOT=0.02          # ML >= 65%
+RECOVERY_LOT=0.01     # ML < 55%, after losses, or high volatility
 ```
+
+### Telegram Commands
+
+| Command | Description |
+|---------|-------------|
+| `/status` | Bot status & account overview |
+| `/market` | Market analysis & signals |
+| `/positions` | Open positions |
+| `/daily` | Today's trading summary |
+| `/risk` | Risk state & settings |
+| `/filters` | Entry filter status |
+| `/news` | News filter status & upcoming NFP / FOMC / CPI blocks |
+| `/news on` / `/news off` | Block / allow new entries during news |
+| `/help` | All commands |
 
 ### Running
 
@@ -178,6 +220,9 @@ SYMBOL=XAUUSD
 ```bash
 # Train models first
 python train_models.py
+
+# macOS only: start the MT5 bridge first (separate terminal)
+./start_mt5_server.sh
 
 # Run the bot
 python main_live.py
@@ -197,7 +242,8 @@ python backtests/backtest_live_sync.py --tune
 | **Total Loss Limit** | 10% of capital |
 | **Position Limit** | Maximum 2 concurrent positions |
 | **Time-Based Exit** | Maximum 6 hours per trade |
-| **Session Filter** | Only opens trades during active sessions |
+| **Session Filter** | Only opens trades during active sessions (Mon–Fri 06:00–23:59 WIB) |
+| **News Filter** | No new entries ±1h around NFP / FOMC / CPI |
 | **Spread Filter** | Rejects trades when spread is high |
 | **Cooldown** | Minimum time between trades |
 
