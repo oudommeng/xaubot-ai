@@ -8,6 +8,7 @@ and from PostgreSQL database for trade history, signals, model data.
 
 import json
 import logging
+import os
 from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -22,13 +23,14 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Trading Bot API", version="2.0.0")
 
-# CORS for frontend
+# CORS: only the dashboard may call the API from a browser (the API has no login,
+# and POST /api/filters/config changes live trading filters)
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=[o.strip() for o in CORS_ORIGINS.split(",") if o.strip()],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
 
 # Status file path (mounted as volume in Docker)

@@ -36,8 +36,10 @@ services:
       DB_NAME: ${DB_NAME:-trading_db}
       DB_USER: ${DB_USER:-trading_bot}
       DB_PASSWORD: ${DB_PASSWORD:-trading_bot_2026}
+      # Browser origin allowed to call the API (must match the dashboard port)
+      CORS_ORIGINS: http://localhost:${DASHBOARD_PORT:-3000},http://127.0.0.1:${DASHBOARD_PORT:-3000}
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "127.0.0.1:${API_PORT:-8000}:8000"
     volumes:
       # Mount data/ for reading bot_status.json and writing filter_config.json
       - ./data:/app/data
@@ -61,14 +63,14 @@ services:
     container_name: trading_bot_dashboard
     restart: unless-stopped
     ports:
-      - "${DASHBOARD_PORT:-3000}:3000"
+      - "127.0.0.1:${DASHBOARD_PORT:-3000}:3000"
     depends_on:
       trading-api:
         condition: service_healthy
     networks:
       - trading_bot_network
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3000"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -84,7 +86,7 @@ services:
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin123}
       PGADMIN_CONFIG_SERVER_MODE: 'False'
     ports:
-      - "${PGADMIN_PORT:-5050}:80"
+      - "127.0.0.1:${PGADMIN_PORT:-5050}:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:

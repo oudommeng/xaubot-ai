@@ -19,6 +19,7 @@ downloads/
 eggs/
 .eggs/
 lib/
+!web-dashboard/src/lib/
 lib64/
 parts/
 sdist/
@@ -51,6 +52,7 @@ data/trade_logs/ml_data/*.csv
 
 # Models (large binary files)
 models/*.pkl
+models/backups/
 models/*.joblib
 models/*.h5
 
