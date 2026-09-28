@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- macOS support: MT5 over Wine via RPyC bridge (`src/mt5_bridge.py`, `mt5_server.py`, `start_mt5_server.sh`)
+- `docs/RUNNING.md` — step-by-step run guide (demo account, macOS bridge, Telegram)
+- News filter re-enabled: no new entries ±1h around NFP / FOMC / CPI (open positions still managed).
+  Toggle `news_filter` in `data/filter_config.json`; Telegram shows SAFE / BLOCKED / OFF
+
+### Fixed
+- `train_models.py`: walk-forward validation overwrote `models/xgboost_model.pkl` with its last
+  ~500-bar fold; the full-data model is now kept
+- News agent always reported SAFE when `copy_ticks_from("XAUUSD")` failed (symbol differs per broker)
+- News agent: correct 2025/2026 FOMC dates, year-aware lookup, WIB time instead of local clock
+- `requirements.txt`: add missing `pytz` and `requests`
+
 ---
 
 ## [0.2.8] - 2026-02-11
