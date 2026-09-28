@@ -37,6 +37,14 @@ class TelegramNotifications:
         """
         self.bot = bot
 
+    def _news_status(self):
+        """(status, reason) for the News line: SAFE / BLOCKED / OFF."""
+        bot = self.bot
+        if not bot._is_filter_enabled("news_filter"):
+            return "OFF", "news_filter disabled in data/filter_config.json"
+        can_trade, reason, _ = bot.news_agent.should_trade()
+        return ("SAFE" if can_trade else "BLOCKED"), reason
+
     # ------------------------------------------------------------------
     # Startup notification
     # ------------------------------------------------------------------
@@ -75,7 +83,7 @@ class TelegramNotifications:
             balance=balance,
             mode=bot.config.capital_mode.value,
             ml_model_status=ml_status,
-            news_status="DISABLED",
+            news_status=self._news_status()[0],
             context=ctx,
         )
 
@@ -553,6 +561,7 @@ class TelegramNotifications:
                 "consecutive_losses": bot.smart_risk.get_state().consecutive_losses,
                 "entry_filters": getattr(bot, "_last_filter_results", []),
             }
+            news_status, news_reason = self._news_status()
 
             await bot.telegram.send_hourly_analysis(
                 balance=balance,
@@ -577,8 +586,8 @@ class TelegramNotifications:
                 uptime_hours=uptime,
                 total_loops=bot._loop_count,
                 avg_execution_ms=avg_exec,
-                news_status="DISABLED",
-                news_reason="News agent disabled",
+                news_status=news_status,
+                news_reason=news_reason,
                 context=ctx,
             )
 

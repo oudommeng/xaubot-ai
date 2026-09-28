@@ -54,6 +54,11 @@
       "enabled": true,
       "name": "Market Close Guard",
       "description": "Block entries near daily/weekend close"
+    },
+    "news_filter": {
+      "enabled": true,
+      "name": "News Filter",
+      "description": "Block new entries +/-1h around NFP / FOMC / CPI"
     }
   },
   "metadata": {

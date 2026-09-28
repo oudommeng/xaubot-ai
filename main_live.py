@@ -66,7 +66,7 @@ from src.telegram_notifier import TelegramNotifier, create_telegram_notifier
 from src.telegram_notifications import TelegramNotifications
 from src.smart_risk_manager import SmartRiskManager, create_smart_risk_manager
 from src.dynamic_confidence import DynamicConfidenceManager, create_dynamic_confidence
-# from src.news_agent import NewsAgent, create_news_agent, MarketCondition  # DISABLED
+from src.news_agent import create_news_agent
 from src.trade_logger import TradeLogger, get_trade_logger
 from src.filter_config import FilterConfigManager
 
@@ -176,9 +176,8 @@ class TradingBot:
         # Initialize Telegram Notifications helper (extracts notification logic)
         self.notifications = TelegramNotifications(self)
 
-        # News Agent DISABLED - backtest proved it costs $178 profit
-        # ML model already handles volatility well
-        self.news_agent = None
+        # News Agent: blocks new entries +/-1h around NFP / FOMC / CPI (toggle: news_filter in data/filter_config.json)
+        self.news_agent = create_news_agent(high_impact_buffer_minutes=60)
 
         # Initialize Trade Logger - for ML auto-training
         self.trade_logger = get_trade_logger()
@@ -1635,7 +1634,19 @@ class TradingBot:
         self._current_session_multiplier = session_multiplier
         self._is_sydney_session = "Sydney" in session_reason or session_multiplier == 0.5
 
-        # 7.6 NEWS AGENT - DISABLED (backtest: costs $178 profit, ML handles volatility)
+        # 7.6 NEWS FILTER - no new entries around high-impact news (open positions still managed)
+        news_ok, news_reason, _ = self.news_agent.should_trade()
+        news_enabled = self._is_filter_enabled("news_filter")
+        news_blocked = not news_ok and news_enabled
+        self._last_filter_results.append({
+            "name": "News Filter",
+            "passed": not news_blocked,
+            "detail": news_reason + (" [DISABLED]" if not news_enabled else "")
+        })
+        if news_blocked:
+            if self._loop_count % 60 == 0:  # ~5 min
+                logger.info(f"News filter: {news_reason} - no new entries")
+            return
 
         # 7.7 H1 bias already calculated above (before filters, for dashboard)
 

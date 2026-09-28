@@ -136,7 +136,8 @@ class FilterConfigManager:
             "signal_combination": {"enabled": True, "name": "Signal Combination", "description": "SMC + ML signal agreement"},
             "cooldown": {"enabled": True, "name": "Cooldown Period", "description": "Minimum time between trades"},
             "time_filter": {"enabled": True, "name": "Time Filter", "description": "Block specific hours"},
-            "market_close_guard": {"enabled": True, "name": "Market Close Guard", "description": "Block near market close"}
+            "market_close_guard": {"enabled": True, "name": "Market Close Guard", "description": "Block near market close"},
+            "news_filter": {"enabled": True, "name": "News Filter", "description": "Block new entries +/-1h around NFP / FOMC / CPI"}
         }
         self.metadata = {
             "updated_at": datetime.now(WIB).isoformat(),

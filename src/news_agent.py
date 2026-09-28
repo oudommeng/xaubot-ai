@@ -19,7 +19,17 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 from enum import Enum
+from zoneinfo import ZoneInfo
 from loguru import logger
+
+WIB = ZoneInfo("Asia/Jakarta")
+
+# FOMC decision days (US date). Statement at 2:00 PM ET = 01:00-02:00 WIB the next day.
+# Source: federalreserve.gov/monetarypolicy/fomccalendars.htm — add each new year here.
+FOMC_DECISION_DATES = {
+    2025: [(1, 29), (3, 19), (5, 7), (6, 18), (7, 30), (9, 17), (10, 29), (12, 10)],
+    2026: [(1, 28), (3, 18), (4, 29), (6, 17), (7, 29), (9, 16), (10, 28), (12, 9)],
+}
 
 
 class MarketCondition(Enum):
@@ -139,6 +149,7 @@ class NewsAgent:
         self._calendar_cache: List[NewsEvent] = []
         self._cache_time: Optional[datetime] = None
         self._cache_duration = timedelta(minutes=15)
+        self._warned_fomc_years: set = set()
 
         logger.info("News Agent initialized")
         logger.info(f"  News buffer: {news_buffer_minutes} minutes")
@@ -152,7 +163,11 @@ class NewsAgent:
             (condition, events, reason)
         """
         try:
-            import MetaTrader5 as mt5
+            from .mt5_bridge import load_mt5
+
+            mt5 = load_mt5()
+            if mt5 is None:
+                raise ImportError("MetaTrader5 unavailable")
 
             # Check if MT5 is already initialized (by main connector)
             # Don't call mt5.initialize() here as it conflicts with main connection
@@ -162,37 +177,11 @@ class NewsAgent:
                 # Don't log warning to avoid spam
                 return MarketCondition.SAFE, [], "MT5 calendar check skipped"
 
-            now = datetime.now()
-
-            # Check high-impact window (60 min before/after)
-            hi_start = now - timedelta(minutes=self.high_impact_buffer_minutes)
-            hi_end = now + timedelta(minutes=self.high_impact_buffer_minutes)
-
-            # Check normal news window (30 min before/after)
-            news_start = now - timedelta(minutes=self.news_buffer_minutes)
-            news_end = now + timedelta(minutes=self.news_buffer_minutes)
-
-            # Get calendar events
-            # Note: MT5 calendar functions may vary by broker
-            # Using a broader approach
-            try:
-                # Try to get calendar events (broker-dependent)
-                # Some brokers don't expose this API
-                events = mt5.copy_ticks_from("XAUUSD", now - timedelta(hours=1), 1, mt5.COPY_TICKS_INFO)
-                # If we get here, try calendar
-                calendar_events = []
-
-                # Fallback: Check known high-impact times
-                # NFP: First Friday of month, 8:30 AM ET (20:30 WIB)
-                # FOMC: ~8 times per year, 2:00 PM ET (02:00 WIB next day)
-                # CPI: Monthly, 8:30 AM ET
-
-                high_impact_found = self._check_known_events(now)
-                if high_impact_found:
-                    return MarketCondition.DANGER_NEWS, [], high_impact_found
-
-            except Exception as e:
-                logger.debug(f"Calendar API not available: {e}")
+            # The MetaTrader5 Python package has no economic calendar API,
+            # so high-impact events come from the known schedule (NFP / FOMC / CPI).
+            high_impact_found = self._check_known_events(datetime.now(WIB))
+            if high_impact_found:
+                return MarketCondition.DANGER_NEWS, [], high_impact_found
 
             return MarketCondition.SAFE, [], "No high-impact news detected"
 
@@ -224,18 +213,16 @@ class NewsAgent:
             if 19 <= hour <= 21:
                 return "NFP (Non-Farm Payroll) - HIGH IMPACT"
 
-        # FOMC: ~8 times per year, 02:00 WIB (2:00 PM ET previous day)
-        # Only check on typical FOMC weeks (specific dates)
-        # FOMC 2025-2026 dates roughly: Jan 29, Mar 19, May 7, Jun 18, Jul 30, Sep 17, Nov 5, Dec 17
-        fomc_dates = [
-            (1, 29), (3, 19), (5, 7), (6, 18), (7, 30), (9, 17), (11, 5), (12, 17),  # 2025
-            (1, 29), (3, 18), (5, 6), (6, 17), (7, 29),  # 2026
-        ]
-        current_month_day = (now.month, now.day)
-        for fomc_month, fomc_day in fomc_dates:
-            if current_month_day == (fomc_month, fomc_day):
-                if 1 <= hour <= 3:  # FOMC announcement ~02:00 WIB
-                    return "FOMC Decision - HIGH IMPACT"
+        # FOMC: statement 2:00 PM ET on decision day = 01:00-02:00 WIB the next day
+        # Block: 00:00-03:59 WIB on the WIB day after the US decision date
+        us_date = (now - timedelta(days=1)).date()
+        fomc_days = FOMC_DECISION_DATES.get(us_date.year)
+        if fomc_days is None:
+            if us_date.year not in self._warned_fomc_years:
+                self._warned_fomc_years.add(us_date.year)
+                logger.warning(f"No FOMC dates for {us_date.year} in news_agent.FOMC_DECISION_DATES")
+        elif (us_date.month, us_date.day) in fomc_days and 0 <= hour <= 3:
+            return "FOMC Decision - HIGH IMPACT"
 
         # CPI: Monthly around 10th-15th, 20:30 WIB (8:30 AM ET)
         # Only block the exact release window, not entire day
